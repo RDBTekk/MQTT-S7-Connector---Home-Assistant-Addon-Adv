@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:line-length
+# Template file für die Konfigurations-GUI
 name: MQTT Siemens S7 Connector
 version: 1.0.11
 slug: mqtt-s7-connector
@@ -14,11 +14,6 @@ arch:
 map:
   - addon_config:rw
   - config:rw
-ingress: true
-ingress_port: 8099
-ingress_entry: /
-panel_icon: mdi:cog
-panel_title: MQTT S7 Konfiguration
 options:
   log_level: warning
   test_mode: false
