@@ -4,7 +4,10 @@
 # Home Assistant Add-on: MQTT S7 Connector
 # Copies the example config files
 # ==============================================================================
+
 bashio::log.info "Copying example config files..."
 
 cp -n /usr/src/mqtt-s7-connector/config.example.yaml /config/
 cp -n /usr/src/mqtt-s7-connector/config.example.json /config/
+
+bashio::log.info "Example config files copied"
