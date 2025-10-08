@@ -1,10 +1,10 @@
 ---
-# yamllint disable rule:line-length
+# Template file für die Konfigurations-GUI
 name: MQTT Siemens S7 Connector
 version: 1.0.11
 slug: mqtt-s7-connector
 description: "MQTT Siemens S7 connector to integrate Siemens PLC's with Home Assistant"
-url: https://github.com/dixi83/MQTT-S7-Connector---Home-Assistant-Addon-Adv
+url: https://github.com/dixi83/hassio-addons/mqtt-s7-connector
 init: false
 services:
   - mqtt:optional
@@ -14,11 +14,6 @@ arch:
 map:
   - addon_config:rw
   - config:rw
-ingress: true
-ingress_port: 8099
-ingress_entry: /
-panel_icon: mdi:cog
-panel_title: MQTT S7 Konfiguration
 options:
   log_level: warning
   test_mode: false
