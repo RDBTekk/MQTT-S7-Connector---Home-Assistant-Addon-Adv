@@ -1,3 +1,5 @@
+console.info('[config-gui] app.js bootstrap start');
+
 const elements = {
   form: document.getElementById('config-form'),
   logLevelSelect: document.getElementById('logLevel'),
@@ -1508,7 +1510,14 @@ function updateMetadata(metadata = {}, system = {}) {
     elements.addonSlugSecondary.textContent = metadata.slug || '–';
   }
   if (elements.configPath) {
-    elements.configPath.textContent = system.config_path || '–';
+    const displayPath =
+      system.config_path ||
+      (system.config_relative_path && system.config_directory
+        ? `${String(system.config_directory).replace(/\/+$/, '')}/${system.config_relative_path}`
+        : null) ||
+      system.options_path ||
+      '–';
+    elements.configPath.textContent = displayPath;
   }
   if (elements.editorSubtitle) {
     if (system.config_directory) {
@@ -2276,6 +2285,22 @@ if (elements.editorExampleButton) {
     setEditorDirty(true);
     setEditorStatus('Beispiel eingefügt – Änderungen noch nicht gespeichert.', 'warning');
   });
+}
+
+try {
+  const appElement = document.querySelector('.app');
+  const bodyStyles = window.getComputedStyle(document.body);
+  const appStyles = appElement ? window.getComputedStyle(appElement) : null;
+  console.info(
+    '[config-gui] style probe',
+    JSON.stringify({
+      bodyBackground: bodyStyles ? bodyStyles.backgroundImage || bodyStyles.backgroundColor : null,
+      bodyColor: bodyStyles ? bodyStyles.color : null,
+      appBackground: appStyles ? appStyles.backgroundImage || appStyles.backgroundColor : null,
+    })
+  );
+} catch (error) {
+  console.warn('[config-gui] style probe failed', error);
 }
 
 resetEditor();

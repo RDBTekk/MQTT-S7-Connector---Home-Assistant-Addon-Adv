@@ -64,7 +64,7 @@ There are several log levels if there are problems changing the level to debug c
 
 ### Config files
 
-Here you can add a config file for each PLC you want to connect with. The files should be placed in the `addon_configs\xxxxxxxx_mqtt-s7-connector` folder
+Here you can add a config file for each PLC you want to connect with. Store the files inside the Home Assistant `/config` share (for example `\config\mqtt-s7-connector` when using Samba).
 
 #### Single PLC
 
@@ -103,7 +103,7 @@ If no PLC is reachable yet, trigger the scan once the hardware is online or enab
 
 ## Configuration
 
-After installing the Addon and the initial run a folder is created, the `\addon_configs\xxxxxxxx_mqtt-s7-connector` folder. Inside this folder you'll find the [`config.example.yaml`](https://github.com/dixi83/mqtt-s7-connector/blob/master/config.example.yaml) file. This file contains an example of the configuration. Copy the file and rename it to `config.yaml` as a starting point. If you need multiple PLC connections then create for every connection a config file, and add the file names in your addon configuration.
+After installing the add-on and running it for the first time the connector copies `config.example.yaml` and `config.example.json` into the Home Assistant `/config` share. Use these examples as templates: duplicate `config.example.yaml` to `/config/config.yaml` (or create additional files such as `/config/config_plc1.yaml`) and reference the filenames in your add-on configuration.
 
 There are several ways to get access to this folder and files, e.g.:
 

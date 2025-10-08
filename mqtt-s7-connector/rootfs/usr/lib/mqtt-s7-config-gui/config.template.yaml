@@ -15,6 +15,7 @@ arch:
   - amd64
 map:
   - addon_config:rw
+  - config:rw
 options:
   log_level: warning
   test_mode: false

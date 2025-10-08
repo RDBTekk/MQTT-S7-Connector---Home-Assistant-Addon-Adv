@@ -29,6 +29,12 @@ const CONFIG_PATH = process.env.CONFIG_GUI_FILE || '/addon_configs/mqtt-s7-conne
 const TEMPLATE_PATH = process.env.CONFIG_GUI_TEMPLATE || path.join(__dirname, 'config.template.yaml');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = Number.parseInt(process.env.CONFIG_GUI_PORT || '8099', 10);
+const STORAGE_ROOT_ENV =
+  typeof process.env.CONFIG_GUI_STORAGE_ROOT === 'string'
+    ? process.env.CONFIG_GUI_STORAGE_ROOT.trim()
+    : '';
+const CONFIG_STORAGE_ROOT =
+  STORAGE_ROOT_ENV.length > 0 ? path.resolve(STORAGE_ROOT_ENV) : '/config';
 const FILE_API_PREFIX = '/api/files/';
 const ENTITY_CONFIG_ENDPOINT = '/api/entity-config';
 const PLC_SCAN_ENDPOINT = '/api/plc/scan';
@@ -86,9 +92,9 @@ function resolveConfigFileName(fileName) {
     throw new Error('Ungültiger Dateiname.');
   }
 
-  const configDir = path.dirname(CONFIG_PATH);
-  const absolutePath = path.normalize(path.join(configDir, normalized));
-  const relative = path.relative(configDir, absolutePath);
+  const baseDirectory = CONFIG_STORAGE_ROOT;
+  const absolutePath = path.normalize(path.join(baseDirectory, normalized));
+  const relative = path.relative(baseDirectory, absolutePath);
 
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
     throw new Error('Pfad liegt außerhalb des Konfigurationsverzeichnisses.');
@@ -907,24 +913,45 @@ function getConfigFileDetails(fileNames) {
 
 function buildConfigResponse() {
   const { data } = readConfig();
-  const configDir = path.dirname(CONFIG_PATH);
-
-  let configExists = false;
-  let lastModified = null;
-
-  try {
-    const stat = fs.statSync(CONFIG_PATH);
-    if (stat.isFile()) {
-      configExists = true;
-      lastModified = stat.mtime.toISOString();
-    }
-  } catch (error) {
-    // Datei existiert (noch) nicht – ignoriere
-  }
+  const optionsDirectory = path.dirname(CONFIG_PATH);
+  const storageRoot = CONFIG_STORAGE_ROOT;
 
   const configFiles = Array.isArray(data.options.config_files)
     ? data.options.config_files
     : [];
+
+  let primaryConfig = null;
+  if (configFiles.length > 0) {
+    try {
+      primaryConfig = resolveConfigFileName(configFiles[0]);
+    } catch (error) {
+      primaryConfig = null;
+    }
+  }
+
+  let configExists = false;
+  let lastModified = null;
+  if (primaryConfig) {
+    try {
+      const stat = fs.statSync(primaryConfig.absolutePath);
+      if (stat.isFile()) {
+        configExists = true;
+        lastModified = stat.mtime.toISOString();
+      }
+    } catch (error) {
+      // Datei existiert nicht – ignoriere
+    }
+  }
+
+  let optionsLastModified = null;
+  try {
+    const stat = fs.statSync(CONFIG_PATH);
+    if (stat.isFile()) {
+      optionsLastModified = stat.mtime.toISOString();
+    }
+  } catch (error) {
+    // options-Datei existiert (noch) nicht – ignoriere
+  }
 
   return {
     log_level: data.options.log_level,
@@ -933,10 +960,15 @@ function buildConfigResponse() {
     test_mode: Boolean(data.options.test_mode),
     metadata: data.metadata,
     system: {
-      config_path: CONFIG_PATH,
-      config_directory: configDir,
+      config_path: primaryConfig ? primaryConfig.absolutePath : null,
+      config_relative_path: primaryConfig ? primaryConfig.relativePath : null,
+      config_directory: storageRoot,
+      storage_root: storageRoot,
+      options_path: CONFIG_PATH,
+      options_directory: optionsDirectory,
+      options_last_modified: optionsLastModified,
       config_exists: configExists,
-      last_modified: lastModified,
+      last_modified: lastModified || optionsLastModified,
       total_files: configFiles.length,
     },
     config_file_details: getConfigFileDetails(configFiles),
@@ -1157,6 +1189,7 @@ function handleSaveConfigFile(req, res, fileName) {
 function serveStaticFile(filePath, res) {
   fs.readFile(filePath, (error, data) => {
     if (error) {
+      console.warn('[config-gui] static asset missing', JSON.stringify({ filePath }));
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Nicht gefunden');
       return;
@@ -1175,6 +1208,8 @@ function serveStaticFile(filePath, res) {
 
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(data);
+
+    console.debug('[config-gui] static asset served', JSON.stringify({ filePath, contentType }));
   });
 }
 
@@ -1186,6 +1221,11 @@ const server = http.createServer((req, res) => {
     const urlBase = hostHeader ? `http://${hostHeader}` : 'http://localhost';
     const rawUrl = typeof req.url === 'string' ? req.url.trim() : '';
     const normalizedUrl = rawUrl.length > 0 ? rawUrl : '/';
+
+    console.debug(
+      '[config-gui] incoming request',
+      JSON.stringify({ method: req.method, rawUrl, normalizedUrl, host: hostHeader })
+    );
 
     let requestUrl;
     try {
@@ -1277,6 +1317,11 @@ const server = http.createServer((req, res) => {
         res.end('Zugriff verweigert');
         return;
       }
+
+      console.debug(
+        '[config-gui] static asset request',
+        JSON.stringify({ pathname, requestedPath, normalizedPath, targetPath })
+      );
 
       serveStaticFile(targetPath, res);
       return;

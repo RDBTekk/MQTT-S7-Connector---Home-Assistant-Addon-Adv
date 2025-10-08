@@ -15,6 +15,7 @@ arch:
   - amd64
 map:
   - addon_config:rw
+  - config:rw
 ingress: true
 ingress_port: 8099
 ingress_entry: /
