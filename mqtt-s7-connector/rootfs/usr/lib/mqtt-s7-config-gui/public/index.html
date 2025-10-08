@@ -135,15 +135,39 @@
               </div>
               <div class="form-field">
                 <label for="generalMqttBase">MQTT Basis</label>
-                <input type="text" id="generalMqttBase" />
+                <div class="input-combo">
+                  <select id="generalMqttBase" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="generalMqttBaseCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigene MQTT Basis"
+                  />
+                </div>
               </div>
               <div class="form-field">
                 <label for="generalMqttDevice">MQTT Gerätename</label>
-                <input type="text" id="generalMqttDevice" />
+                <div class="input-combo">
+                  <select id="generalMqttDevice" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="generalMqttDeviceCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigener Gerätename"
+                  />
+                </div>
               </div>
               <div class="form-field">
                 <label for="generalDiscoveryPrefix">Discovery Prefix</label>
-                <input type="text" id="generalDiscoveryPrefix" />
+                <div class="input-combo">
+                  <select id="generalDiscoveryPrefix" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="generalDiscoveryPrefixCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigenes Discovery Prefix"
+                  />
+                </div>
               </div>
               <div class="form-field form-field--checkbox">
                 <label class="checkbox" for="generalRetainMessages">
@@ -172,27 +196,83 @@
               </div>
               <div class="form-field">
                 <label for="plcPort">Port</label>
-                <input type="number" id="plcPort" min="1" max="65535" />
+                <div class="input-combo">
+                  <select id="plcPort" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcPortCustom"
+                    class="input-combo__custom"
+                    min="1"
+                    max="65535"
+                    placeholder="Eigener Port"
+                  />
+                </div>
               </div>
               <div class="form-field">
                 <label for="plcRack">Rack</label>
-                <input type="number" id="plcRack" min="0" max="7" />
+                <div class="input-combo">
+                  <select id="plcRack" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcRackCustom"
+                    class="input-combo__custom"
+                    min="0"
+                    max="7"
+                    placeholder="Eigenes Rack"
+                  />
+                </div>
               </div>
               <div class="form-field">
                 <label for="plcSlot">Slot</label>
-                <input type="number" id="plcSlot" min="0" max="15" />
+                <div class="input-combo">
+                  <select id="plcSlot" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcSlotCustom"
+                    class="input-combo__custom"
+                    min="0"
+                    max="15"
+                    placeholder="Eigener Slot"
+                  />
+                </div>
               </div>
               <div class="form-field">
                 <label for="plcLocalTsap">Lokale TSAP-ID</label>
-                <input type="text" id="plcLocalTsap" placeholder="z. B. 0x0100" />
+                <div class="input-combo">
+                  <select id="plcLocalTsap" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="plcLocalTsapCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigene lokale TSAP-ID"
+                  />
+                </div>
               </div>
               <div class="form-field">
                 <label for="plcRemoteTsap">Remote TSAP-ID</label>
-                <input type="text" id="plcRemoteTsap" placeholder="z. B. 0x0300" />
+                <div class="input-combo">
+                  <select id="plcRemoteTsap" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="plcRemoteTsapCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigene Remote TSAP-ID"
+                  />
+                </div>
               </div>
               <div class="form-field">
                 <label for="plcSimulationInterval">Simulationsintervall (ms)</label>
-                <input type="number" id="plcSimulationInterval" min="100" step="50" />
+                <div class="input-combo">
+                  <select id="plcSimulationInterval" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcSimulationIntervalCustom"
+                    class="input-combo__custom"
+                    min="10"
+                    step="10"
+                    placeholder="Eigenes Intervall"
+                  />
+                </div>
               </div>
               <div class="form-field form-field--checkbox">
                 <label class="checkbox" for="plcTestMode">
@@ -352,6 +432,49 @@
           </div>
         </section>
       </form>
+
+      <div class="modal" id="entityWizard" aria-hidden="true">
+        <div class="modal__backdrop" data-close="entityWizard"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="entityWizardTitle">
+          <header class="modal__header">
+            <h2 id="entityWizardTitle">Neue Entität erstellen</h2>
+            <button type="button" class="modal__close" id="entityWizardClose" aria-label="Schließen">×</button>
+          </header>
+          <form id="entityWizardForm" class="modal__body">
+            <div class="form-field">
+              <label for="entityWizardDirection">Signalrichtung</label>
+              <select id="entityWizardDirection">
+                <option value="output">Ausgang / Aktor</option>
+                <option value="input">Eingang / Sensor</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="entityWizardCategory">Vorlage</label>
+              <select id="entityWizardCategory"></select>
+              <p class="form-hint js-wizard-description">Wähle eine Vorlage, um passende Felder zu erhalten.</p>
+            </div>
+            <div class="form-field">
+              <label for="entityWizardName">Anzeigename</label>
+              <input type="text" id="entityWizardName" placeholder="z. B. Wohnzimmerlampe" />
+            </div>
+            <div class="form-field">
+              <label>Automatische Einstellungen</label>
+              <div class="wizard-preview">
+                <p>
+                  MQTT Topic: <strong class="js-wizard-topic">–</strong>
+                </p>
+                <p class="js-wizard-address-hint">SPS-Adressen werden passend vorgeschlagen.</p>
+              </div>
+            </div>
+          </form>
+          <footer class="modal__footer">
+            <button type="button" class="btn btn--ghost" id="entityWizardCancel">Abbrechen</button>
+            <button type="submit" form="entityWizardForm" class="btn btn--primary" id="entityWizardConfirm">
+              Entität erstellen
+            </button>
+          </footer>
+        </div>
+      </div>
     </main>
 
     <template id="config-row-template">

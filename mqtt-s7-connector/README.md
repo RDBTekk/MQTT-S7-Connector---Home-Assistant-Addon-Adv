@@ -24,6 +24,9 @@ Dieses Add-on enthält nun eine integrierte Weboberfläche, über die sich alle 
 - Aktivierbarer Testmodus, der eine virtuelle S7-1200 samt digitalen/analogen Ein- und Ausgängen simuliert.
 - Live-Scan der angebundenen SPS, inklusive tabellarischer Auflistung der gefundenen Ein- und Ausgänge samt Quelle und Status.
 - Komfortable Dropdown-Auswahl für alle SPS-Adressen: erkannte Adressen werden gruppiert angeboten, können aber bei Bedarf weiterhin manuell eingetragen werden.
+- Geführter Entitäts-Assistent mit Vorlagen für typische Aktoren und Sensoren (Lampe, Ventil, Garagentor, Temperatursensor usw.) inklusive automatischer MQTT- und SPS-Adressvorschläge.
+- Dropdown-basierte Auswahlfelder für MQTT-Basis, MQTT-Gerätenamen, Discovery-Prefix sowie PLC-Port/Rack/Slot und TSAP-IDs – eigene Werte lassen sich jederzeit über ein eingeblendetes Eingabefeld hinterlegen.
+- Kontextabhängige MQTT-Topic-Vorschläge pro Entität, die aus Basis- und Gerätenamen generiert werden und bei Bedarf überschrieben werden können.
 
 Der Dienst bleibt zudem aktiv, wenn aktuell keine PLC erreichbar ist. Die Verbindung wird im Hintergrund in regelmäßigen Abständen neu aufgebaut, sodass die Weboberfläche jederzeit für Anpassungen verfügbar bleibt.
 

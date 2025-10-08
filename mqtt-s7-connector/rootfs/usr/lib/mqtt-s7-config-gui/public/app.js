@@ -37,17 +37,26 @@ const elements = {
   generalUpdateTime: document.getElementById('generalUpdateTime'),
   generalTemperatureInterval: document.getElementById('generalTemperatureInterval'),
   generalMqttBase: document.getElementById('generalMqttBase'),
+  generalMqttBaseCustom: document.getElementById('generalMqttBaseCustom'),
   generalMqttDevice: document.getElementById('generalMqttDevice'),
+  generalMqttDeviceCustom: document.getElementById('generalMqttDeviceCustom'),
   generalDiscoveryPrefix: document.getElementById('generalDiscoveryPrefix'),
+  generalDiscoveryPrefixCustom: document.getElementById('generalDiscoveryPrefixCustom'),
   generalRetainMessages: document.getElementById('generalRetainMessages'),
   generalDiscoveryRetain: document.getElementById('generalDiscoveryRetain'),
   plcHost: document.getElementById('plcHost'),
   plcPort: document.getElementById('plcPort'),
+  plcPortCustom: document.getElementById('plcPortCustom'),
   plcRack: document.getElementById('plcRack'),
+  plcRackCustom: document.getElementById('plcRackCustom'),
   plcSlot: document.getElementById('plcSlot'),
+  plcSlotCustom: document.getElementById('plcSlotCustom'),
   plcLocalTsap: document.getElementById('plcLocalTsap'),
+  plcLocalTsapCustom: document.getElementById('plcLocalTsapCustom'),
   plcRemoteTsap: document.getElementById('plcRemoteTsap'),
+  plcRemoteTsapCustom: document.getElementById('plcRemoteTsapCustom'),
   plcSimulationInterval: document.getElementById('plcSimulationInterval'),
+  plcSimulationIntervalCustom: document.getElementById('plcSimulationIntervalCustom'),
   plcTestMode: document.getElementById('plcTestMode'),
   mqttHost: document.getElementById('mqttHost'),
   mqttUser: document.getElementById('mqttUser'),
@@ -61,6 +70,18 @@ const elements = {
   entityList: document.getElementById('entityList'),
   entityTemplate: document.getElementById('entity-template'),
   addEntityButton: document.getElementById('addEntity'),
+  entityWizard: document.getElementById('entityWizard'),
+  entityWizardForm: document.getElementById('entityWizardForm'),
+  entityWizardDirection: document.getElementById('entityWizardDirection'),
+  entityWizardCategory: document.getElementById('entityWizardCategory'),
+  entityWizardName: document.getElementById('entityWizardName'),
+  entityWizardTopic: document.querySelector('.js-wizard-topic'),
+  entityWizardAddressHint: document.querySelector('.js-wizard-address-hint'),
+  entityWizardDescription: document.querySelector('.js-wizard-description'),
+  entityWizardCancel: document.getElementById('entityWizardCancel'),
+  entityWizardConfirm: document.getElementById('entityWizardConfirm'),
+  entityWizardClose: document.getElementById('entityWizardClose'),
+  entityWizardBackdrop: document.querySelector('[data-close="entityWizard"]'),
 };
 
 const rowDetails = new WeakMap();
@@ -79,6 +100,10 @@ let addressOptions = { groups: [], flat: [] };
 let generalBindingsInitialized = false;
 let plcBindingsInitialized = false;
 let mqttBindingsInitialized = false;
+const entityFieldRefs = new Map();
+let generalPresetControllers = {};
+let plcPresetControllers = {};
+const wizardState = { direction: 'output', blueprintId: null };
 
 const ADDRESS_CUSTOM_VALUE = '__custom__';
 
@@ -99,6 +124,180 @@ const ENTITY_TYPES = [
 const ADDRESS_PATTERN = /^(?:DB\d+,[A-Z]+[0-9.,]+|[IQM][A-Z0-9.,]+)$/i;
 const ENTITY_CONFIG_ENDPOINT = 'api/entity-config';
 const PLC_SCAN_ENDPOINT = 'api/plc/scan';
+const CUSTOM_SELECT_VALUE = '__custom__';
+
+const MQTT_BASE_PRESETS = [
+  { value: 's7', label: 's7 (Standard)' },
+  { value: 'homeassistant', label: 'homeassistant' },
+  { value: 'automation', label: 'automation' },
+  { value: 'factory', label: 'factory' },
+];
+
+const MQTT_DEVICE_PRESETS = [
+  { value: 'plc', label: 'plc' },
+  { value: 'logo', label: 'logo' },
+  { value: 'controller', label: 'controller' },
+  { value: 'station', label: 'station' },
+];
+
+const DISCOVERY_PREFIX_PRESETS = [
+  { value: 'homeassistant', label: 'homeassistant (Standard)' },
+  { value: 'ha', label: 'ha' },
+  { value: 'automation', label: 'automation' },
+];
+
+const PLC_PORT_PRESETS = [
+  { value: '102', label: '102 (S7/TIA)' },
+  { value: '502', label: '502 (Modbus/TCP)' },
+  { value: '2000', label: '2000' },
+];
+
+const PLC_RACK_PRESETS = [
+  { value: '0', label: '0' },
+  { value: '1', label: '1' },
+  { value: '2', label: '2' },
+];
+
+const PLC_SLOT_PRESETS = [
+  { value: '0', label: '0' },
+  { value: '1', label: '1' },
+  { value: '2', label: '2' },
+  { value: '3', label: '3' },
+];
+
+const PLC_SIM_PRESETS = [
+  { value: '250', label: '250' },
+  { value: '500', label: '500' },
+  { value: '1000', label: '1000' },
+  { value: '2000', label: '2000' },
+];
+
+const PLC_TSAP_PRESETS = [
+  { value: '0x0100', label: '0x0100 (LOGO! lokal)' },
+  { value: '0x0200', label: '0x0200' },
+  { value: '0x0300', label: '0x0300 (LOGO! remote)' },
+  { value: '0x1000', label: '0x1000 (S7-1200)' },
+];
+
+const ENTITY_WIZARD_BLUEPRINTS = [
+  {
+    id: 'light',
+    direction: 'output',
+    label: 'Lampe',
+    description: 'Schaltbare Leuchte mit optionaler Helligkeitsregelung.',
+    type: 'light',
+    defaultName: 'Lampe',
+    mqttHint: 'light',
+    addressFields: {
+      state: { label: 'Schaltzustand', patterns: [/^Q/i, /^DB/i] },
+      brightness: { label: 'Helligkeit (optional)', patterns: [/^DB/i, /^M/i], optional: true },
+    },
+  },
+  {
+    id: 'switch',
+    direction: 'output',
+    label: 'Schalter',
+    description: 'Universeller Aktor für Relais, Pumpen oder einfache Verbraucher.',
+    type: 'switch',
+    defaultName: 'Schalter',
+    mqttHint: 'switch',
+    addressFields: {
+      state: { label: 'Schaltzustand', patterns: [/^Q/i, /^DB/i] },
+    },
+  },
+  {
+    id: 'valve',
+    direction: 'output',
+    label: 'Ventil',
+    description: 'Steuert Ventile oder hydraulische Aktoren.',
+    type: 'switch',
+    defaultName: 'Ventil',
+    mqttHint: 'valve',
+    extras: { device_class: 'valve' },
+    addressFields: {
+      state: { label: 'Ventilstatus', patterns: [/^Q/i, /^DB/i] },
+    },
+  },
+  {
+    id: 'garage',
+    direction: 'output',
+    label: 'Garagentor',
+    description: 'Binärer Torantrieb mit Auf-/Zu-Steuerung.',
+    type: 'binarycover',
+    defaultName: 'Garagentor',
+    mqttHint: 'garage',
+    extras: { device_class: 'garage' },
+    addressFields: {
+      targetPosition: { label: 'Ansteuerung', patterns: [/^Q/i, /^DB/i] },
+      currentPosition: { label: 'Status', patterns: [/^I/i, /^DB/i] },
+    },
+  },
+  {
+    id: 'fan',
+    direction: 'output',
+    label: 'Ventilator',
+    description: 'Lüfter mit Drehzahl- oder Modussteuerung.',
+    type: 'fan',
+    defaultName: 'Ventilator',
+    mqttHint: 'fan',
+    extras: { preset_modes: ['eco', 'boost', 'night'] },
+    addressFields: {
+      state: { label: 'Ein/Aus', patterns: [/^Q/i, /^DB/i] },
+      percentage: { label: 'Drehzahl (optional)', patterns: [/^DB/i, /^M/i], optional: true },
+    },
+  },
+  {
+    id: 'temperature',
+    direction: 'input',
+    label: 'Temperatursensor',
+    description: 'Analoger Temperaturwert aus der SPS.',
+    type: 'sensor',
+    defaultName: 'Temperatur',
+    mqttHint: 'temperature',
+    extras: { device_class: 'temperature', unit_of_measurement: '°C' },
+    addressFields: {
+      state: { label: 'Temperatur', patterns: [/^I/i, /^DB/i, /^M/i] },
+    },
+  },
+  {
+    id: 'humidity',
+    direction: 'input',
+    label: 'Feuchtigkeitssensor',
+    description: 'Misst relative Luftfeuchtigkeit.',
+    type: 'sensor',
+    defaultName: 'Feuchte',
+    mqttHint: 'humidity',
+    extras: { device_class: 'humidity', unit_of_measurement: '%' },
+    addressFields: {
+      state: { label: 'Feuchtigkeit', patterns: [/^I/i, /^DB/i, /^M/i] },
+    },
+  },
+  {
+    id: 'status',
+    direction: 'input',
+    label: 'Statuskontakt',
+    description: 'Digitaler Eingang, z. B. Fenster- oder Türkontakt.',
+    type: 'sensor',
+    defaultName: 'Status',
+    mqttHint: 'status',
+    extras: { device_class: 'door' },
+    addressFields: {
+      state: { label: 'Status', patterns: [/^I/i, /^DB/i] },
+    },
+  },
+  {
+    id: 'button',
+    direction: 'input',
+    label: 'Taster',
+    description: 'Virtueller Taster für Tasten oder Trittmatten.',
+    type: 'button',
+    defaultName: 'Taster',
+    mqttHint: 'button',
+    addressFields: {
+      state: { label: 'Tasteradresse', patterns: [/^I/i, /^DB/i] },
+    },
+  },
+];
 
 function setStatus(message, type = 'info') {
   if (!elements.statusField) return;
@@ -122,6 +321,319 @@ function setScanStatus(message, type = 'info') {
   if (!elements.scanStatus) return;
   elements.scanStatus.textContent = message || '';
   elements.scanStatus.dataset.type = type;
+}
+
+function toggleCustomField(input, show, value = '') {
+  if (!input) {
+    return;
+  }
+
+  const normalized = value !== undefined && value !== null ? String(value) : '';
+  input.value = normalized;
+  input.classList.toggle('is-visible', Boolean(show));
+  input.disabled = !show;
+  input.setAttribute('aria-hidden', show ? 'false' : 'true');
+}
+
+function setupPresetField(select, customInput, options, onChange, config = {}) {
+  if (!select) {
+    return null;
+  }
+
+  const normalizedOptions = Array.isArray(options) ? options.filter(Boolean) : [];
+  const placeholder = config.placeholder === undefined ? 'Bitte wählen' : config.placeholder;
+  const customLabel = config.customLabel || 'Eigener Wert…';
+
+  const rebuildOptions = () => {
+    const fragment = document.createDocumentFragment();
+    if (placeholder !== false) {
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = placeholder || 'Bitte wählen';
+      fragment.appendChild(placeholderOption);
+    }
+
+    normalizedOptions.forEach((option) => {
+      const opt = document.createElement('option');
+      opt.value = option.value;
+      opt.textContent = option.label || option.value;
+      fragment.appendChild(opt);
+    });
+
+    const customOption = document.createElement('option');
+    customOption.value = CUSTOM_SELECT_VALUE;
+    customOption.textContent = customLabel;
+    fragment.appendChild(customOption);
+
+    select.innerHTML = '';
+    select.appendChild(fragment);
+  };
+
+  rebuildOptions();
+  toggleCustomField(customInput, false);
+
+  const controller = {
+    setValue(value) {
+      const normalized = value === undefined || value === null ? '' : String(value);
+      const match = normalizedOptions.find((option) => option.value === normalized);
+      if (match) {
+        select.value = match.value;
+        toggleCustomField(customInput, false);
+        if (customInput) {
+          customInput.value = '';
+        }
+      } else if (normalized) {
+        select.value = CUSTOM_SELECT_VALUE;
+        toggleCustomField(customInput, true, normalized);
+      } else {
+        select.value = '';
+        toggleCustomField(customInput, false);
+        if (customInput) {
+          customInput.value = '';
+        }
+      }
+    },
+  };
+
+  select.addEventListener('change', (event) => {
+    const selected = event.target.value;
+    if (selected === CUSTOM_SELECT_VALUE) {
+      toggleCustomField(customInput, true, customInput ? customInput.value : '');
+      if (customInput) {
+        window.requestAnimationFrame(() => {
+          customInput.focus();
+          customInput.select();
+        });
+      }
+      if (typeof onChange === 'function' && (!customInput || !customInput.value)) {
+        onChange(null);
+      }
+      return;
+    }
+
+    toggleCustomField(customInput, false);
+    if (typeof onChange === 'function') {
+      onChange(selected ? selected : null);
+    }
+  });
+
+  if (customInput) {
+    customInput.addEventListener('input', (event) => {
+      const raw = event.target.value.trim();
+      if (typeof onChange === 'function') {
+        onChange(raw ? raw : null);
+      }
+    });
+
+    customInput.addEventListener('blur', (event) => {
+      if (!event.target.value.trim()) {
+        toggleCustomField(customInput, false);
+        if (select.value === CUSTOM_SELECT_VALUE) {
+          select.value = '';
+        }
+        if (typeof onChange === 'function') {
+          onChange(null);
+        }
+      }
+    });
+  }
+
+  return controller;
+}
+
+function slugify(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  return String(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+}
+
+function getBaseDeviceTopic() {
+  const base = slugify(getRootValue(['mqtt_base'], 's7')) || 's7';
+  const device = slugify(getRootValue(['mqtt_device_name'], 'plc')) || 'plc';
+  return `${base}_${device}`;
+}
+
+function getBlueprintsForDirection(direction) {
+  const normalized = direction === 'input' ? 'input' : 'output';
+  return ENTITY_WIZARD_BLUEPRINTS.filter((blueprint) => blueprint.direction === normalized);
+}
+
+function getBlueprintById(id) {
+  if (!id) {
+    return null;
+  }
+  return ENTITY_WIZARD_BLUEPRINTS.find((blueprint) => blueprint.id === id) || null;
+}
+
+function pickSuggestedAddress(patterns, direction) {
+  if (!Array.isArray(addressOptions.flat) || addressOptions.flat.length === 0) {
+    return '';
+  }
+
+  const searchPatterns = [];
+  if (Array.isArray(patterns)) {
+    patterns.forEach((pattern) => {
+      if (pattern instanceof RegExp) {
+        searchPatterns.push(pattern);
+      } else if (typeof pattern === 'string') {
+        searchPatterns.push(new RegExp(pattern, 'i'));
+      }
+    });
+  }
+
+  const fallbackPatterns =
+    direction === 'input'
+      ? [/^I/i, /^DB/i, /^M/i]
+      : [/^Q/i, /^DB/i, /^M/i];
+  searchPatterns.push(...fallbackPatterns);
+
+  for (const regex of searchPatterns) {
+    for (const address of addressOptions.flat) {
+      if (regex.test(String(address))) {
+        return String(address);
+      }
+    }
+  }
+
+  return '';
+}
+
+function buildBlueprintAddressSummary(blueprint) {
+  if (!blueprint || !blueprint.addressFields) {
+    return 'SPS-Adressen werden passend vorgeschlagen.';
+  }
+
+  const previews = [];
+  Object.entries(blueprint.addressFields).forEach(([key, meta]) => {
+    const suggestion = pickSuggestedAddress(meta?.patterns || [], blueprint.direction);
+    if (suggestion) {
+      previews.push(`${meta?.label || key}: ${suggestion}`);
+    }
+  });
+
+  if (previews.length > 0) {
+    return `Vorschläge: ${previews.join(', ')}`;
+  }
+
+  if (!addressOptions.flat || addressOptions.flat.length === 0) {
+    return 'Noch keine SPS-Adressen gefunden – Felder bleiben leer.';
+  }
+
+  return 'SPS-Adressen werden passend vorgeschlagen.';
+}
+
+function generateEntityMqttSuggestions(index, entity) {
+  const suggestions = [];
+  const seen = new Set();
+  const baseTopic = getBaseDeviceTopic();
+
+  const pushCandidate = (candidate) => {
+    if (!candidate) {
+      return;
+    }
+    const value = slugify(candidate);
+    if (!value || seen.has(value)) {
+      return;
+    }
+    seen.add(value);
+    const label = baseTopic ? `${value} – ${baseTopic}/${value}` : value;
+    suggestions.push({ value, label });
+  };
+
+  if (entity?.mqtt) {
+    pushCandidate(entity.mqtt);
+  }
+
+  const nameSlug = slugify(entity?.name);
+  const typeSlug = slugify(entity?.type);
+
+  pushCandidate(nameSlug);
+  pushCandidate(`${typeSlug || 'entity'}_${index + 1}`);
+  pushCandidate(`${typeSlug || 'entity'}_${nameSlug || index + 1}`);
+
+  const deviceSlug = slugify(getRootValue(['mqtt_device_name'], 'plc'));
+  if (deviceSlug && nameSlug) {
+    pushCandidate(`${deviceSlug}_${nameSlug}`);
+  }
+
+  if (suggestions.length === 0) {
+    pushCandidate(`entity_${index + 1}`);
+  }
+
+  return suggestions;
+}
+
+function populateMqttSelectOptions(select, customInput, index, entity, currentValue) {
+  if (!select) {
+    return;
+  }
+
+  const options = generateEntityMqttSuggestions(index, entity);
+  const fragment = document.createDocumentFragment();
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Automatisch vorschlagen';
+  fragment.appendChild(placeholder);
+
+  options.forEach((option) => {
+    const opt = document.createElement('option');
+    opt.value = option.value;
+    opt.textContent = option.label || option.value;
+    fragment.appendChild(opt);
+  });
+
+  const customOption = document.createElement('option');
+  customOption.value = CUSTOM_SELECT_VALUE;
+  customOption.textContent = 'Eigenes Topic…';
+  fragment.appendChild(customOption);
+
+  select.innerHTML = '';
+  select.appendChild(fragment);
+
+  const normalized = currentValue === undefined || currentValue === null ? '' : String(currentValue);
+  const match = options.find((option) => option.value === normalized);
+  if (match) {
+    select.value = match.value;
+    toggleCustomField(customInput, false);
+  } else if (normalized) {
+    select.value = CUSTOM_SELECT_VALUE;
+    toggleCustomField(customInput, true, normalized);
+  } else {
+    select.value = '';
+    toggleCustomField(customInput, false);
+    if (customInput) {
+      customInput.value = '';
+    }
+  }
+}
+
+function updateEntityMqttSuggestions(index) {
+  const ref = entityFieldRefs.get(Number(index));
+  if (!ref || !ref.mqtt) {
+    return;
+  }
+
+  const entity = getEntityAt(index);
+  if (!entity) {
+    return;
+  }
+
+  const currentValue = getEntityValue(index, ['mqtt'], entity.mqtt || '');
+  populateMqttSelectOptions(ref.mqtt.select, ref.mqtt.customInput, index, entity, currentValue);
+}
+
+function refreshAllMqttSuggestions() {
+  entityFieldRefs.forEach((_, key) => {
+    updateEntityMqttSuggestions(Number(key));
+  });
+  updateEntityWizardPreview();
 }
 
 function markEntityConfigDirty() {
@@ -521,6 +1033,7 @@ function createTypeField(index, value, titleEl, subtitleEl) {
     if (subtitleEl) {
       subtitleEl.textContent = nextValue ? `Typ: ${nextValue}` : 'Typ nicht gesetzt';
     }
+    updateEntityMqttSuggestions(index);
   });
   field.appendChild(label);
   field.appendChild(select);
@@ -530,6 +1043,10 @@ function createTypeField(index, value, titleEl, subtitleEl) {
 function createTextField(index, path, labelText, value = '', onChange = null, options = {}) {
   if (options.address) {
     return createAddressField(index, path, labelText, value);
+  }
+
+  if (options.mqttTopic) {
+    return createMqttField(index, path, labelText, value, options);
   }
 
   const field = document.createElement('div');
@@ -555,6 +1072,81 @@ function createTextField(index, path, labelText, value = '', onChange = null, op
   });
   field.appendChild(label);
   field.appendChild(input);
+  return field;
+}
+
+function createMqttField(index, path, labelText, value = '', options = {}) {
+  const field = document.createElement('div');
+  field.className = 'entity-field';
+
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  field.appendChild(label);
+
+  const controls = document.createElement('div');
+  controls.className = 'input-combo';
+
+  const select = document.createElement('select');
+  select.className = 'input-combo__select';
+
+  const customInput = document.createElement('input');
+  customInput.type = 'text';
+  customInput.className = 'input-combo__custom';
+  customInput.placeholder = 'Eigenes MQTT Topic';
+
+  controls.appendChild(select);
+  controls.appendChild(customInput);
+  field.appendChild(controls);
+
+  const entity = options.entity || getEntityAt(index);
+  populateMqttSelectOptions(select, customInput, index, entity, value);
+
+  select.addEventListener('change', (event) => {
+    const selected = event.target.value;
+    if (selected === CUSTOM_SELECT_VALUE) {
+      deleteEntityValue(index, path);
+      toggleCustomField(customInput, true, customInput ? customInput.value : '');
+      window.requestAnimationFrame(() => {
+        customInput.focus();
+        customInput.select();
+      });
+      return;
+    }
+
+    if (!selected) {
+      deleteEntityValue(index, path);
+      toggleCustomField(customInput, false);
+      return;
+    }
+
+    setEntityValue(index, path, selected);
+    toggleCustomField(customInput, false);
+  });
+
+  customInput.addEventListener('input', (event) => {
+    const raw = event.target.value.trim();
+    if (raw) {
+      const slug = slugify(raw);
+      setEntityValue(index, path, slug || raw);
+    } else {
+      deleteEntityValue(index, path);
+    }
+  });
+
+  customInput.addEventListener('blur', (event) => {
+    if (!event.target.value.trim()) {
+      toggleCustomField(customInput, false);
+      if (select.value === CUSTOM_SELECT_VALUE) {
+        select.value = '';
+      }
+    }
+  });
+
+  const numericIndex = Number(index);
+  const ref = entityFieldRefs.get(numericIndex) || {};
+  ref.mqtt = { select, customInput };
+  entityFieldRefs.set(numericIndex, ref);
+
   return field;
 }
 
@@ -886,11 +1478,30 @@ function populateGeneralSettings() {
   elements.generalTemperatureInterval.value =
     temperatureInterval !== undefined && temperatureInterval !== null ? temperatureInterval : '';
 
-  elements.generalMqttBase.value = getRootValue(['mqtt_base'], '') || '';
-  elements.generalMqttDevice.value = getRootValue(['mqtt_device_name'], '') || '';
-  elements.generalDiscoveryPrefix.value = getRootValue(['discovery_prefix'], '') || '';
+  const mqttBaseValue = getRootValue(['mqtt_base'], '') || '';
+  if (generalPresetControllers.mqttBase?.setValue) {
+    generalPresetControllers.mqttBase.setValue(mqttBaseValue);
+  } else if (elements.generalMqttBase) {
+    elements.generalMqttBase.value = mqttBaseValue;
+  }
+
+  const mqttDeviceValue = getRootValue(['mqtt_device_name'], '') || '';
+  if (generalPresetControllers.mqttDevice?.setValue) {
+    generalPresetControllers.mqttDevice.setValue(mqttDeviceValue);
+  } else if (elements.generalMqttDevice) {
+    elements.generalMqttDevice.value = mqttDeviceValue;
+  }
+
+  const discoveryPrefixValue = getRootValue(['discovery_prefix'], '') || '';
+  if (generalPresetControllers.discoveryPrefix?.setValue) {
+    generalPresetControllers.discoveryPrefix.setValue(discoveryPrefixValue);
+  } else if (elements.generalDiscoveryPrefix) {
+    elements.generalDiscoveryPrefix.value = discoveryPrefixValue;
+  }
   elements.generalRetainMessages.checked = Boolean(getRootValue(['retain_messages'], false));
   elements.generalDiscoveryRetain.checked = Boolean(getRootValue(['discovery_retain'], false));
+
+  refreshAllMqttSuggestions();
 }
 
 function populatePlcSettings() {
@@ -901,20 +1512,49 @@ function populatePlcSettings() {
   elements.plcHost.value = getRootValue(['plc', 'host'], '') || '';
 
   const port = getRootValue(['plc', 'port'], '');
-  elements.plcPort.value = port !== undefined && port !== null ? port : '';
+  if (plcPresetControllers.port?.setValue) {
+    plcPresetControllers.port.setValue(port !== undefined && port !== null ? port : '');
+  } else if (elements.plcPort) {
+    elements.plcPort.value = port !== undefined && port !== null ? port : '';
+  }
 
   const rack = getRootValue(['plc', 'rack'], '');
-  elements.plcRack.value = rack !== undefined && rack !== null ? rack : '';
+  if (plcPresetControllers.rack?.setValue) {
+    plcPresetControllers.rack.setValue(rack !== undefined && rack !== null ? rack : '');
+  } else if (elements.plcRack) {
+    elements.plcRack.value = rack !== undefined && rack !== null ? rack : '';
+  }
 
   const slot = getRootValue(['plc', 'slot'], '');
-  elements.plcSlot.value = slot !== undefined && slot !== null ? slot : '';
+  if (plcPresetControllers.slot?.setValue) {
+    plcPresetControllers.slot.setValue(slot !== undefined && slot !== null ? slot : '');
+  } else if (elements.plcSlot) {
+    elements.plcSlot.value = slot !== undefined && slot !== null ? slot : '';
+  }
 
-  elements.plcLocalTsap.value = getRootValue(['plc', 'local_tsap_id'], '') || '';
-  elements.plcRemoteTsap.value = getRootValue(['plc', 'remote_tsap_id'], '') || '';
+  const localTsap = getRootValue(['plc', 'local_tsap_id'], '') || '';
+  if (plcPresetControllers.localTsap?.setValue) {
+    plcPresetControllers.localTsap.setValue(localTsap);
+  } else if (elements.plcLocalTsap) {
+    elements.plcLocalTsap.value = localTsap;
+  }
+
+  const remoteTsap = getRootValue(['plc', 'remote_tsap_id'], '') || '';
+  if (plcPresetControllers.remoteTsap?.setValue) {
+    plcPresetControllers.remoteTsap.setValue(remoteTsap);
+  } else if (elements.plcRemoteTsap) {
+    elements.plcRemoteTsap.value = remoteTsap;
+  }
 
   const simulationInterval = getRootValue(['plc', 'simulation_interval'], '');
-  elements.plcSimulationInterval.value =
-    simulationInterval !== undefined && simulationInterval !== null ? simulationInterval : '';
+  if (plcPresetControllers.simulationInterval?.setValue) {
+    plcPresetControllers.simulationInterval.setValue(
+      simulationInterval !== undefined && simulationInterval !== null ? simulationInterval : '',
+    );
+  } else if (elements.plcSimulationInterval) {
+    elements.plcSimulationInterval.value =
+      simulationInterval !== undefined && simulationInterval !== null ? simulationInterval : '';
+  }
 
   elements.plcTestMode.checked = Boolean(getRootValue(['plc', 'test_mode'], false));
 }
@@ -935,6 +1575,8 @@ function renderEntities() {
     return;
   }
 
+  entityFieldRefs.clear();
+
   const entities = Array.isArray(entityConfigData?.entities) ? entityConfigData.entities : [];
   elements.entityList.innerHTML = '';
 
@@ -943,6 +1585,7 @@ function renderEntities() {
     empty.className = 'empty-state';
     empty.textContent = 'Keine Entitäten konfiguriert. Füge über den Button oben eine neue Entität hinzu.';
     elements.entityList.appendChild(empty);
+    refreshAllMqttSuggestions();
     return;
   }
 
@@ -950,6 +1593,8 @@ function renderEntities() {
     const cardFragment = createEntityCard(entity || {}, index);
     elements.entityList.appendChild(cardFragment);
   });
+
+  refreshAllMqttSuggestions();
 }
 
 function createEntityCard(entity, index) {
@@ -1005,10 +1650,13 @@ function createEntityCard(entity, index) {
       if (titleEl) {
         titleEl.textContent = next || `Entität ${index + 1}`;
       }
+      updateEntityMqttSuggestions(index);
     }),
   );
   generalGrid.appendChild(createTextField(index, ['device_name'], 'Gerätename', entity.device_name || ''));
-  generalGrid.appendChild(createTextField(index, ['mqtt'], 'MQTT Topic', entity.mqtt || ''));
+  generalGrid.appendChild(
+    createTextField(index, ['mqtt'], 'MQTT Topic', entity.mqtt || '', null, { mqttTopic: true, entity }),
+  );
   generalGrid.appendChild(createTextField(index, ['manufacturer'], 'Hersteller', entity.manufacturer || ''));
   content.appendChild(generalSection);
 
@@ -1069,7 +1717,12 @@ function createEntityCard(entity, index) {
   return fragment || card;
 }
 
-function addEntity() {
+function addEntity(blueprintId = null) {
+  if (elements.entityWizard) {
+    openEntityWizard(blueprintId);
+    return;
+  }
+
   const entities = ensureEntitiesArray();
   const nextIndex = entities.length + 1;
   entities.push({
@@ -1140,6 +1793,202 @@ function addEntityField(index) {
   renderEntities();
 }
 
+function populateWizardCategoryOptions(direction, preferredId = null) {
+  if (!elements.entityWizardCategory) {
+    return null;
+  }
+
+  const blueprints = getBlueprintsForDirection(direction);
+  const fragment = document.createDocumentFragment();
+
+  blueprints.forEach((blueprint) => {
+    const option = document.createElement('option');
+    option.value = blueprint.id;
+    option.textContent = blueprint.label || blueprint.id;
+    fragment.appendChild(option);
+  });
+
+  elements.entityWizardCategory.innerHTML = '';
+  elements.entityWizardCategory.appendChild(fragment);
+
+  const fallbackId =
+    preferredId && blueprints.some((bp) => bp.id === preferredId)
+      ? preferredId
+      : blueprints[0]?.id || '';
+
+  if (fallbackId) {
+    elements.entityWizardCategory.value = fallbackId;
+  }
+
+  wizardState.blueprintId = fallbackId || null;
+  return getBlueprintById(fallbackId);
+}
+
+function getSelectedBlueprint() {
+  const currentId = elements.entityWizardCategory?.value || wizardState.blueprintId;
+  return getBlueprintById(currentId);
+}
+
+function openEntityWizard(preselectedId = null) {
+  if (!elements.entityWizard) {
+    const entities = ensureEntitiesArray();
+    const nextIndex = entities.length + 1;
+    entities.push({
+      type: 'sensor',
+      name: `Entität ${nextIndex}`,
+    });
+    markEntityConfigDirty();
+    renderEntities();
+    return;
+  }
+
+  const targetBlueprint = preselectedId ? getBlueprintById(preselectedId) : null;
+  const direction = targetBlueprint?.direction || wizardState.direction || 'output';
+  wizardState.direction = direction;
+
+  if (elements.entityWizardForm) {
+    elements.entityWizardForm.reset();
+  }
+
+  if (elements.entityWizardDirection) {
+    elements.entityWizardDirection.value = direction;
+  }
+
+  const blueprint = populateWizardCategoryOptions(direction, targetBlueprint?.id || null);
+
+  const entities = ensureEntitiesArray();
+  const defaultName =
+    targetBlueprint?.defaultName ||
+    blueprint?.defaultName ||
+    blueprint?.label ||
+    `Entität ${entities.length + 1}`;
+
+  if (elements.entityWizardName) {
+    elements.entityWizardName.value = defaultName;
+    elements.entityWizardName.dataset.touched = '';
+  }
+
+  updateEntityWizardPreview();
+
+  elements.entityWizard.classList.add('is-open');
+  elements.entityWizard.setAttribute('aria-hidden', 'false');
+
+  window.requestAnimationFrame(() => {
+    elements.entityWizardName?.focus();
+    elements.entityWizardName?.select();
+  });
+}
+
+function closeEntityWizard() {
+  if (!elements.entityWizard) {
+    return;
+  }
+  elements.entityWizard.classList.remove('is-open');
+  elements.entityWizard.setAttribute('aria-hidden', 'true');
+}
+
+function updateEntityWizardPreview() {
+  if (!elements.entityWizard) {
+    return;
+  }
+
+  const blueprint = getSelectedBlueprint();
+  if (blueprint) {
+    wizardState.blueprintId = blueprint.id;
+  }
+
+  if (elements.entityWizardDescription) {
+    elements.entityWizardDescription.textContent =
+      blueprint?.description || 'Wähle eine Vorlage, um passende Felder zu erhalten.';
+  }
+
+  const entities = Array.isArray(entityConfigData?.entities) ? entityConfigData.entities : [];
+  const entityCount = entities.length;
+  const nameInput = elements.entityWizardName;
+  const rawName = nameInput ? nameInput.value.trim() : '';
+
+  const mqttCandidates = [
+    slugify(rawName),
+    slugify(blueprint?.mqttHint ? `${blueprint.mqttHint}_${entityCount + 1}` : ''),
+    slugify(`${blueprint?.type || 'entity'}_${entityCount + 1}`),
+  ];
+  const mqttName = mqttCandidates.find((candidate) => candidate) || `entity_${entityCount + 1}`;
+  const baseTopic = getBaseDeviceTopic();
+
+  if (elements.entityWizardTopic) {
+    elements.entityWizardTopic.textContent = mqttName
+      ? baseTopic
+        ? `${baseTopic}/${mqttName}`
+        : mqttName
+      : '–';
+  }
+
+  if (elements.entityWizardAddressHint) {
+    elements.entityWizardAddressHint.textContent = buildBlueprintAddressSummary(blueprint);
+  }
+}
+
+function createEntityFromBlueprint() {
+  const blueprint = getSelectedBlueprint();
+  if (!blueprint) {
+    const entities = ensureEntitiesArray();
+    const nextIndex = entities.length + 1;
+    entities.push({ type: 'sensor', name: `Entität ${nextIndex}` });
+    markEntityConfigDirty();
+    renderEntities();
+    closeEntityWizard();
+    return;
+  }
+
+  const entities = ensureEntitiesArray();
+  const entityIndex = entities.length;
+  const rawName = elements.entityWizardName?.value?.trim();
+  const name =
+    rawName ||
+    blueprint.defaultName ||
+    blueprint.label ||
+    `Entität ${entityIndex + 1}`;
+
+  const newEntity = { type: blueprint.type, name };
+
+  if (blueprint.addressFields) {
+    Object.entries(blueprint.addressFields).forEach(([key, meta]) => {
+      const suggestion = pickSuggestedAddress(meta?.patterns || [], blueprint.direction);
+      if (suggestion) {
+        newEntity[key] = suggestion;
+      } else if (!meta?.optional) {
+        newEntity[key] = '';
+      }
+    });
+  }
+
+  if (blueprint.extras) {
+    Object.entries(blueprint.extras).forEach(([extraKey, extraValue]) => {
+      newEntity[extraKey] = Array.isArray(extraValue) ? [...extraValue] : extraValue;
+    });
+  }
+
+  const mqttCandidates = [
+    slugify(rawName),
+    slugify(`${blueprint.mqttHint || blueprint.type || 'entity'}_${entityIndex + 1}`),
+    slugify(`${blueprint.type || 'entity'}_${entityIndex + 1}`),
+  ];
+  newEntity.mqtt = mqttCandidates.find((candidate) => candidate) || `entity_${entityIndex + 1}`;
+
+  entities.push(newEntity);
+  markEntityConfigDirty();
+  renderEntities();
+  refreshAllMqttSuggestions();
+  closeEntityWizard();
+
+  window.requestAnimationFrame(() => {
+    const cards = elements.entityList?.querySelectorAll('.entity-card');
+    if (cards && cards[cards.length - 1]) {
+      cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+}
+
 function bindGeneralSettings() {
   if (generalBindingsInitialized) {
     return;
@@ -1171,37 +2020,54 @@ function bindGeneralSettings() {
     });
   }
 
-  if (elements.generalMqttBase) {
-    elements.generalMqttBase.addEventListener('input', (event) => {
-      const value = event.target.value.trim();
-      if (value) {
-        setRootValue(['mqtt_base'], value);
-      } else {
-        deleteRootValue(['mqtt_base']);
-      }
-    });
+  if (elements.generalMqttBase && !generalPresetControllers.mqttBase) {
+    generalPresetControllers.mqttBase = setupPresetField(
+      elements.generalMqttBase,
+      elements.generalMqttBaseCustom,
+      MQTT_BASE_PRESETS,
+      (value) => {
+        if (value) {
+          setRootValue(['mqtt_base'], value);
+        } else {
+          deleteRootValue(['mqtt_base']);
+        }
+        refreshAllMqttSuggestions();
+      },
+      { placeholder: 'Basis auswählen', customLabel: 'Eigene Basis…' },
+    );
   }
 
-  if (elements.generalMqttDevice) {
-    elements.generalMqttDevice.addEventListener('input', (event) => {
-      const value = event.target.value.trim();
-      if (value) {
-        setRootValue(['mqtt_device_name'], value);
-      } else {
-        deleteRootValue(['mqtt_device_name']);
-      }
-    });
+  if (elements.generalMqttDevice && !generalPresetControllers.mqttDevice) {
+    generalPresetControllers.mqttDevice = setupPresetField(
+      elements.generalMqttDevice,
+      elements.generalMqttDeviceCustom,
+      MQTT_DEVICE_PRESETS,
+      (value) => {
+        if (value) {
+          setRootValue(['mqtt_device_name'], value);
+        } else {
+          deleteRootValue(['mqtt_device_name']);
+        }
+        refreshAllMqttSuggestions();
+      },
+      { placeholder: 'Gerätenamen wählen', customLabel: 'Eigener Gerätename…' },
+    );
   }
 
-  if (elements.generalDiscoveryPrefix) {
-    elements.generalDiscoveryPrefix.addEventListener('input', (event) => {
-      const value = event.target.value.trim();
-      if (value) {
-        setRootValue(['discovery_prefix'], value);
-      } else {
-        deleteRootValue(['discovery_prefix']);
-      }
-    });
+  if (elements.generalDiscoveryPrefix && !generalPresetControllers.discoveryPrefix) {
+    generalPresetControllers.discoveryPrefix = setupPresetField(
+      elements.generalDiscoveryPrefix,
+      elements.generalDiscoveryPrefixCustom,
+      DISCOVERY_PREFIX_PRESETS,
+      (value) => {
+        if (value) {
+          setRootValue(['discovery_prefix'], value);
+        } else {
+          deleteRootValue(['discovery_prefix']);
+        }
+      },
+      { placeholder: 'Prefix auswählen', customLabel: 'Eigenes Prefix…' },
+    );
   }
 
   if (elements.generalRetainMessages) {
@@ -1235,78 +2101,112 @@ function bindPlcSettings() {
     });
   }
 
-  if (elements.plcPort) {
-    elements.plcPort.addEventListener('input', (event) => {
-      if (event.target.value === '') {
-        deleteRootValue(['plc', 'port']);
-        return;
-      }
-      const numeric = normalizeInteger(event.target.value);
-      if (numeric !== null) {
-        setRootValue(['plc', 'port'], numeric);
-      }
-    });
+  if (elements.plcPort && !plcPresetControllers.port) {
+    plcPresetControllers.port = setupPresetField(
+      elements.plcPort,
+      elements.plcPortCustom,
+      PLC_PORT_PRESETS,
+      (value) => {
+        if (value === null) {
+          deleteRootValue(['plc', 'port']);
+          return;
+        }
+        const numeric = normalizeInteger(value);
+        if (numeric !== null) {
+          setRootValue(['plc', 'port'], numeric);
+        }
+      },
+      { placeholder: 'Port wählen', customLabel: 'Eigener Port…' },
+    );
   }
 
-  if (elements.plcRack) {
-    elements.plcRack.addEventListener('input', (event) => {
-      if (event.target.value === '') {
-        deleteRootValue(['plc', 'rack']);
-        return;
-      }
-      const numeric = normalizeInteger(event.target.value);
-      if (numeric !== null) {
-        setRootValue(['plc', 'rack'], numeric);
-      }
-    });
+  if (elements.plcRack && !plcPresetControllers.rack) {
+    plcPresetControllers.rack = setupPresetField(
+      elements.plcRack,
+      elements.plcRackCustom,
+      PLC_RACK_PRESETS,
+      (value) => {
+        if (value === null) {
+          deleteRootValue(['plc', 'rack']);
+          return;
+        }
+        const numeric = normalizeInteger(value);
+        if (numeric !== null) {
+          setRootValue(['plc', 'rack'], numeric);
+        }
+      },
+      { placeholder: 'Rack wählen', customLabel: 'Eigenes Rack…' },
+    );
   }
 
-  if (elements.plcSlot) {
-    elements.plcSlot.addEventListener('input', (event) => {
-      if (event.target.value === '') {
-        deleteRootValue(['plc', 'slot']);
-        return;
-      }
-      const numeric = normalizeInteger(event.target.value);
-      if (numeric !== null) {
-        setRootValue(['plc', 'slot'], numeric);
-      }
-    });
+  if (elements.plcSlot && !plcPresetControllers.slot) {
+    plcPresetControllers.slot = setupPresetField(
+      elements.plcSlot,
+      elements.plcSlotCustom,
+      PLC_SLOT_PRESETS,
+      (value) => {
+        if (value === null) {
+          deleteRootValue(['plc', 'slot']);
+          return;
+        }
+        const numeric = normalizeInteger(value);
+        if (numeric !== null) {
+          setRootValue(['plc', 'slot'], numeric);
+        }
+      },
+      { placeholder: 'Slot wählen', customLabel: 'Eigener Slot…' },
+    );
   }
 
-  if (elements.plcLocalTsap) {
-    elements.plcLocalTsap.addEventListener('input', (event) => {
-      const value = event.target.value.trim();
-      if (value) {
-        setRootValue(['plc', 'local_tsap_id'], value);
-      } else {
-        deleteRootValue(['plc', 'local_tsap_id']);
-      }
-    });
+  if (elements.plcLocalTsap && !plcPresetControllers.localTsap) {
+    plcPresetControllers.localTsap = setupPresetField(
+      elements.plcLocalTsap,
+      elements.plcLocalTsapCustom,
+      PLC_TSAP_PRESETS,
+      (value) => {
+        if (value) {
+          setRootValue(['plc', 'local_tsap_id'], value.trim());
+        } else {
+          deleteRootValue(['plc', 'local_tsap_id']);
+        }
+      },
+      { placeholder: 'Lokale TSAP wählen', customLabel: 'Eigene TSAP…' },
+    );
   }
 
-  if (elements.plcRemoteTsap) {
-    elements.plcRemoteTsap.addEventListener('input', (event) => {
-      const value = event.target.value.trim();
-      if (value) {
-        setRootValue(['plc', 'remote_tsap_id'], value);
-      } else {
-        deleteRootValue(['plc', 'remote_tsap_id']);
-      }
-    });
+  if (elements.plcRemoteTsap && !plcPresetControllers.remoteTsap) {
+    plcPresetControllers.remoteTsap = setupPresetField(
+      elements.plcRemoteTsap,
+      elements.plcRemoteTsapCustom,
+      PLC_TSAP_PRESETS,
+      (value) => {
+        if (value) {
+          setRootValue(['plc', 'remote_tsap_id'], value.trim());
+        } else {
+          deleteRootValue(['plc', 'remote_tsap_id']);
+        }
+      },
+      { placeholder: 'Remote TSAP wählen', customLabel: 'Eigene TSAP…' },
+    );
   }
 
-  if (elements.plcSimulationInterval) {
-    elements.plcSimulationInterval.addEventListener('input', (event) => {
-      if (event.target.value === '') {
-        deleteRootValue(['plc', 'simulation_interval']);
-        return;
-      }
-      const numeric = normalizeInteger(event.target.value);
-      if (numeric !== null) {
-        setRootValue(['plc', 'simulation_interval'], numeric);
-      }
-    });
+  if (elements.plcSimulationInterval && !plcPresetControllers.simulationInterval) {
+    plcPresetControllers.simulationInterval = setupPresetField(
+      elements.plcSimulationInterval,
+      elements.plcSimulationIntervalCustom,
+      PLC_SIM_PRESETS,
+      (value) => {
+        if (value === null) {
+          deleteRootValue(['plc', 'simulation_interval']);
+          return;
+        }
+        const numeric = normalizeInteger(value);
+        if (numeric !== null) {
+          setRootValue(['plc', 'simulation_interval'], numeric);
+        }
+      },
+      { placeholder: 'Intervall wählen', customLabel: 'Eigenes Intervall…' },
+    );
   }
 
   if (elements.plcTestMode) {
@@ -2229,6 +3129,65 @@ if (elements.scanRefreshButton) {
     loadLastScan();
   });
 }
+
+if (elements.entityWizardDirection) {
+  elements.entityWizardDirection.addEventListener('change', (event) => {
+    wizardState.direction = event.target.value === 'input' ? 'input' : 'output';
+    const blueprint = populateWizardCategoryOptions(wizardState.direction, null);
+    if (elements.entityWizardName && elements.entityWizardName.dataset.touched !== 'true') {
+      const defaultName = blueprint?.defaultName || blueprint?.label || elements.entityWizardName.value;
+      elements.entityWizardName.value = defaultName;
+    }
+    updateEntityWizardPreview();
+  });
+}
+
+if (elements.entityWizardCategory) {
+  elements.entityWizardCategory.addEventListener('change', () => {
+    const blueprint = getSelectedBlueprint();
+    if (elements.entityWizardName && elements.entityWizardName.dataset.touched !== 'true') {
+      const defaultName = blueprint?.defaultName || blueprint?.label || elements.entityWizardName.value;
+      elements.entityWizardName.value = defaultName;
+    }
+    updateEntityWizardPreview();
+  });
+}
+
+if (elements.entityWizardName) {
+  elements.entityWizardName.addEventListener('input', () => {
+    elements.entityWizardName.dataset.touched = 'true';
+    updateEntityWizardPreview();
+  });
+}
+
+const closeWizardHandler = () => {
+  closeEntityWizard();
+};
+
+if (elements.entityWizardCancel) {
+  elements.entityWizardCancel.addEventListener('click', closeWizardHandler);
+}
+
+if (elements.entityWizardClose) {
+  elements.entityWizardClose.addEventListener('click', closeWizardHandler);
+}
+
+if (elements.entityWizardBackdrop) {
+  elements.entityWizardBackdrop.addEventListener('click', closeWizardHandler);
+}
+
+if (elements.entityWizardForm) {
+  elements.entityWizardForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    createEntityFromBlueprint();
+  });
+}
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && elements.entityWizard?.classList.contains('is-open')) {
+    closeEntityWizard();
+  }
+});
 
 if (elements.addEntityButton) {
   elements.addEntityButton.addEventListener('click', () => {
