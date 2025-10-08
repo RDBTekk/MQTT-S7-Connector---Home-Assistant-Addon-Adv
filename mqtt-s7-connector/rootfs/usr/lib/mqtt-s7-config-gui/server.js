@@ -25,7 +25,6 @@ try {
   }
 }
 
-const CONFIG_PATH = process.env.CONFIG_GUI_FILE || '/addon_configs/mqtt-s7-connector/config.yaml';
 const TEMPLATE_PATH = process.env.CONFIG_GUI_TEMPLATE || path.join(__dirname, 'config.template.yaml');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = Number.parseInt(process.env.CONFIG_GUI_PORT || '8099', 10);
@@ -35,6 +34,17 @@ const STORAGE_ROOT_ENV =
     : '';
 const CONFIG_STORAGE_ROOT =
   STORAGE_ROOT_ENV.length > 0 ? path.resolve(STORAGE_ROOT_ENV) : '/config';
+const CONFIG_PATH = (() => {
+  const envValue = typeof process.env.CONFIG_GUI_FILE === 'string'
+    ? process.env.CONFIG_GUI_FILE.trim()
+    : '';
+
+  if (envValue.length > 0) {
+    return envValue;
+  }
+
+  return path.join(CONFIG_STORAGE_ROOT, 'config.yaml');
+})();
 const FILE_API_PREFIX = '/api/files/';
 const ENTITY_CONFIG_ENDPOINT = '/api/entity-config';
 const PLC_SCAN_ENDPOINT = '/api/plc/scan';
@@ -1225,43 +1235,54 @@ const server = http.createServer((req, res) => {
     const hostHeader = typeof req.headers.host === 'string' && req.headers.host.trim().length > 0
       ? req.headers.host.trim()
       : null;
-    const urlBase = hostHeader ? `http://${hostHeader}` : 'http://localhost';
-    const rawUrl = typeof req.url === 'string' ? req.url.trim() : '';
-    const normalizedUrl = rawUrl.length > 0 ? rawUrl : '/';
+    const rawUrl = typeof req.url === 'string' ? req.url : '/';
+    const trimmedUrl = rawUrl.trim();
+    const hashIndex = trimmedUrl.indexOf('#');
+    const withoutHash = hashIndex >= 0 ? trimmedUrl.slice(0, hashIndex) : trimmedUrl;
+    const queryIndex = withoutHash.indexOf('?');
+    const rawPathPart = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+    const rawSearch = queryIndex >= 0 ? withoutHash.slice(queryIndex) : '';
 
-    let sanitizedUrl = normalizedUrl;
-    if (sanitizedUrl.startsWith('//')) {
-      sanitizedUrl = `/${sanitizedUrl.replace(/^\/+/, '')}`;
+    let pathname = rawPathPart.length > 0 ? rawPathPart : '/';
+    if (!pathname.startsWith('/')) {
+      pathname = `/${pathname}`;
+    }
+
+    pathname = pathname.replace(/\/+/g, '/');
+
+    if (!pathname.startsWith('/')) {
+      pathname = `/${pathname}`;
+    }
+
+    if (pathname === '') {
+      pathname = '/';
     }
 
     console.debug(
       '[config-gui] incoming request',
-      JSON.stringify({ method: req.method, rawUrl, normalizedUrl, host: hostHeader })
+      JSON.stringify({
+        method: req.method,
+        rawUrl,
+        normalizedUrl: trimmedUrl || '/',
+        canonicalPath: pathname,
+        host: hostHeader,
+      })
     );
 
-    let requestUrl;
-    try {
-      requestUrl = new URL(sanitizedUrl, urlBase);
-    } catch (parseError) {
-      console.warn(`Ingress request URL parsing failed for '${normalizedUrl}': ${parseError.message}`);
-      requestUrl = new URL('/', urlBase);
-    }
-    const ingressSegments = requestUrl.pathname.split('/').filter(Boolean);
+    const ingressSegments = pathname.split('/').filter(Boolean);
 
     if (
       req.method === 'GET' &&
       ingressSegments[0] === 'api' &&
       ingressSegments[1] === 'hassio_ingress' &&
       ingressSegments.length === 3 &&
-      !requestUrl.pathname.endsWith('/')
+      !pathname.endsWith('/')
     ) {
-      const redirectTarget = `${requestUrl.pathname}/${requestUrl.search || ''}`;
+      const redirectTarget = `${pathname}/${rawSearch}`;
       res.writeHead(302, { Location: redirectTarget });
       res.end();
       return;
     }
-
-    let pathname = requestUrl.pathname;
 
     const rawSegments = pathname.split('/').filter(Boolean);
     if (rawSegments[0] === 'api' && rawSegments[1] === 'hassio_ingress' && rawSegments.length >= 3) {

@@ -148,6 +148,7 @@ class HaTransport {
                         this.entityCommandMeta.set(entityId, {
                                 setTopic,
                                 attribute: attr,
+                                attributeName: stateAttribute,
                         });
                 }
 
@@ -591,16 +592,59 @@ class HaTransport {
                         return;
                 }
 
-                const payload = this.fromHaState(newState.state);
+                const payloadValue = this.extractCommandValue(newState, meta);
+                if (payloadValue === undefined) {
+                        return;
+                }
+
+                const payload = this.fromHaState(payloadValue, meta.attribute);
 
                 if (typeof this.onMessage === 'function') {
                         this.onMessage(meta.setTopic, payload);
                 }
         }
 
-        fromHaState(state) {
+        extractCommandValue(newState, meta) {
+                if (!newState) {
+                        return undefined;
+                }
+
+                const attributes = newState.attributes || {};
+                const attributeName = meta && meta.attributeName;
+
+                if (attributeName && attributeName !== 'state' && Object.prototype.hasOwnProperty.call(attributes, attributeName)) {
+                        return attributes[attributeName];
+                }
+
+                if (attributeName === 'state' && newState.state !== undefined) {
+                        return newState.state;
+                }
+
+                if (attributeName && Object.prototype.hasOwnProperty.call(attributes, attributeName)) {
+                        return attributes[attributeName];
+                }
+
+                if (newState.state !== undefined) {
+                        return newState.state;
+                }
+
+                return undefined;
+        }
+
+        fromHaState(state, attribute) {
                 if (state === undefined || state === null) {
                         return 'unknown';
+                }
+
+                if (typeof state === 'number') {
+                        if (Number.isNaN(state)) {
+                                return 'unknown';
+                        }
+                        return state.toString();
+                }
+
+                if (typeof state === 'boolean') {
+                        return state ? 'true' : 'false';
                 }
 
                 const lower = String(state).toLowerCase();
@@ -612,6 +656,15 @@ class HaTransport {
                 }
                 if (lower === 'locked' || lower === 'unlocked') {
                         return lower === 'locked' ? 'false' : 'true';
+                }
+
+                if (attribute && attribute.type === 'X') {
+                        if (lower === 'true' || lower === '1') {
+                                return 'true';
+                        }
+                        if (lower === 'false' || lower === '0') {
+                                return 'false';
+                        }
                 }
 
                 return state.toString();
