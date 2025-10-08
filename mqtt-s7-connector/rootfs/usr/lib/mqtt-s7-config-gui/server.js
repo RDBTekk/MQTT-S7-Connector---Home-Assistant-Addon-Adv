@@ -1222,6 +1222,11 @@ const server = http.createServer((req, res) => {
     const rawUrl = typeof req.url === 'string' ? req.url.trim() : '';
     const normalizedUrl = rawUrl.length > 0 ? rawUrl : '/';
 
+    let sanitizedUrl = normalizedUrl;
+    if (sanitizedUrl.startsWith('//')) {
+      sanitizedUrl = `/${sanitizedUrl.replace(/^\/+/, '')}`;
+    }
+
     console.debug(
       '[config-gui] incoming request',
       JSON.stringify({ method: req.method, rawUrl, normalizedUrl, host: hostHeader })
@@ -1229,7 +1234,7 @@ const server = http.createServer((req, res) => {
 
     let requestUrl;
     try {
-      requestUrl = new URL(normalizedUrl, urlBase);
+      requestUrl = new URL(sanitizedUrl, urlBase);
     } catch (parseError) {
       console.warn(`Ingress request URL parsing failed for '${normalizedUrl}': ${parseError.message}`);
       requestUrl = new URL('/', urlBase);
