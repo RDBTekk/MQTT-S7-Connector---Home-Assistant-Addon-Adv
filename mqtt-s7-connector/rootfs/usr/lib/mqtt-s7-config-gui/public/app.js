@@ -128,9 +128,12 @@ const CUSTOM_SELECT_VALUE = '__custom__';
 
 const MQTT_BASE_PRESETS = [
   { value: 's7', label: 's7 (Standard)' },
+  { value: 's7/linie1', label: 's7/linie1 (Mehrlinien-Anlage)' },
   { value: 'homeassistant', label: 'homeassistant' },
   { value: 'automation', label: 'automation' },
+  { value: 'building', label: 'building' },
   { value: 'factory', label: 'factory' },
+  { value: 'demo', label: 'demo' },
 ];
 
 const MQTT_DEVICE_PRESETS = [
@@ -138,45 +141,60 @@ const MQTT_DEVICE_PRESETS = [
   { value: 'logo', label: 'logo' },
   { value: 'controller', label: 'controller' },
   { value: 'station', label: 'station' },
+  { value: 'line', label: 'line' },
+  { value: 'panel', label: 'panel' },
+  { value: 'testbench', label: 'testbench' },
 ];
 
 const DISCOVERY_PREFIX_PRESETS = [
   { value: 'homeassistant', label: 'homeassistant (Standard)' },
   { value: 'ha', label: 'ha' },
   { value: 'automation', label: 'automation' },
+  { value: 'industry', label: 'industry' },
+  { value: 'building', label: 'building' },
 ];
 
 const PLC_PORT_PRESETS = [
-  { value: '102', label: '102 (S7/TIA)' },
-  { value: '502', label: '502 (Modbus/TCP)' },
-  { value: '2000', label: '2000' },
+  { value: '102', label: '102 (S7-1200/1500, LOGO!)' },
+  { value: '200', label: '200 (S7-200 über Gateway)' },
+  { value: '502', label: '502 (Modbus/TCP Gateway)' },
+  { value: '10201', label: '10201 (SINUMERIK / RFC1006)' },
+  { value: '1102', label: '1102 (S7-1500 geschützter Zugriff)' },
+  { value: '1200', label: '1200 (Simulations/Testport)' },
 ];
 
 const PLC_RACK_PRESETS = [
-  { value: '0', label: '0' },
-  { value: '1', label: '1' },
-  { value: '2', label: '2' },
+  { value: '0', label: '0 (LOGO!, S7-1200/1500)' },
+  { value: '1', label: '1 (S7-300/400 Standard-Rack)' },
+  { value: '2', label: '2 (Erweiterungsrack/ET200)' },
+  { value: '3', label: '3 (Zusatz-Rack)' },
 ];
 
 const PLC_SLOT_PRESETS = [
-  { value: '0', label: '0' },
-  { value: '1', label: '1' },
-  { value: '2', label: '2' },
-  { value: '3', label: '3' },
+  { value: '0', label: '0 (LOGO! CPU)' },
+  { value: '1', label: '1 (S7-1200/1500 CPU)' },
+  { value: '2', label: '2 (S7-300/400 CPU)' },
+  { value: '3', label: '3 (Kommunikationsprozessor)' },
+  { value: '4', label: '4 (Telecontrol/CP)' },
 ];
 
 const PLC_SIM_PRESETS = [
+  { value: '100', label: '100 (Sehr schnell)' },
   { value: '250', label: '250' },
   { value: '500', label: '500' },
   { value: '1000', label: '1000' },
   { value: '2000', label: '2000' },
+  { value: '5000', label: '5000 (gemächlich)' },
 ];
 
 const PLC_TSAP_PRESETS = [
   { value: '0x0100', label: '0x0100 (LOGO! lokal)' },
-  { value: '0x0200', label: '0x0200' },
-  { value: '0x0300', label: '0x0300 (LOGO! remote)' },
-  { value: '0x1000', label: '0x1000 (S7-1200)' },
+  { value: '0x0200', label: '0x0200 (LOGO! Remote-Partner)' },
+  { value: '0x0300', label: '0x0300 (LOGO! Fernwartung)' },
+  { value: '0x1000', label: '0x1000 (S7-1200 Rack0/Slot1)' },
+  { value: '0x1200', label: '0x1200 (S7-300 Rack0/Slot2)' },
+  { value: '0x2400', label: '0x2400 (S7-400 Rack0/Slot3)' },
+  { value: '0x4000', label: '0x4000 (S7-1500 geschützter Partner)' },
 ];
 
 const ENTITY_WIZARD_BLUEPRINTS = [
