@@ -1184,7 +1184,16 @@ const server = http.createServer((req, res) => {
       ? req.headers.host.trim()
       : null;
     const urlBase = hostHeader ? `http://${hostHeader}` : 'http://localhost';
-    const requestUrl = new URL(req.url, urlBase);
+    const rawUrl = typeof req.url === 'string' ? req.url.trim() : '';
+    const normalizedUrl = rawUrl.length > 0 ? rawUrl : '/';
+
+    let requestUrl;
+    try {
+      requestUrl = new URL(normalizedUrl, urlBase);
+    } catch (parseError) {
+      console.warn(`Ingress request URL parsing failed for '${normalizedUrl}': ${parseError.message}`);
+      requestUrl = new URL('/', urlBase);
+    }
     const pathname = requestUrl.pathname;
 
     if (req.method === 'GET' && pathname === '/api/config') {

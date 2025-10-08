@@ -65,10 +65,7 @@ module.exports = class device {
 			new_attribute.plc_address = config;
 		}
 
-		// register the attribute to the plc library
-		new_attribute.subscribePlcUpdates();
-
-		let type;
+                let type;
 		if(new_attribute.plc_address.startsWith('DB')) {
 			// split the plc address to get the type
 			let offset = new_attribute.plc_address.split(',');
@@ -128,8 +125,14 @@ module.exports = class device {
 		sf.debug("- New attribute '" + new_attribute.full_mqtt_topic + "' was created");
 
 		// save attribute in an array
-		this.attributes[name] = new_attribute;
-	}
+                this.attributes[name] = new_attribute;
+        }
+
+        registerPlcSubscriptions() {
+                Object.keys(this.attributes).forEach((key) => {
+                        this.attributes[key].subscribePlcUpdates();
+                });
+        }
 
 	send_discover_msg(info) {
 		// create a topic in which the discovery message can be sent

@@ -14,12 +14,24 @@ validateConfig(config);
 const mqtt = mqtt_handler.setup(config.mqtt, mqttMsgParser, initEntities);
 const plc = plc_handler.setup(config.plc, initEntities);
 
-let entities = [];
+let entities = {};
+let plcUpdateInterval = null;
+let discoveryInterval = null;
 
 function initEntities() {
         if (mqtt_handler.isConnected() && plc_handler.isConnected()) {
                 sf.debug("Initialize application");
-                entities = [];
+                entities = {};
+
+                if (plcUpdateInterval) {
+                        clearInterval(plcUpdateInterval);
+                        plcUpdateInterval = null;
+                }
+
+                if (discoveryInterval) {
+                        clearInterval(discoveryInterval);
+                        discoveryInterval = null;
+                }
 
 		// set default config values if they arent set
 		config.update_time = config.update_time || 1000; // 1 second
@@ -34,14 +46,28 @@ function initEntities() {
 
 		// namespace translation
                 plc.setTranslationCB((topic) => {
-                        const topic_parts = topic.split('/');
-
-                        // call a correct entity and ask for address from attribute
-                        if (topic_parts[3] === "set") {
-                                return entities[topic_parts[1]].get_plc_set_address(topic_parts[2]);
-                        } else {
-                                return entities[topic_parts[1]].get_plc_address(topic_parts[2]);
+                        if (typeof topic !== 'string') {
+                                return topic;
                         }
+
+                        const topic_parts = topic.split('/');
+                        if (topic_parts.length < 3) {
+                                return topic;
+                        }
+
+                        const entity = entities[topic_parts[1]];
+                        if (!entity) {
+                                sf.debug("Translation requested for unknown entity '" + topic_parts[1] + "'");
+                                return null;
+                        }
+
+                        const attributeName = topic_parts[2];
+
+                        if (topic_parts[3] === "set") {
+                                return entity.get_plc_set_address(attributeName);
+                        }
+
+                        return entity.get_plc_address(attributeName);
                 });
 
                 // parse config and create entities
@@ -52,13 +78,12 @@ function initEntities() {
                         config.entities.forEach((entityConfig) => {
                                 const newEntity = device_factory(entities, plc, mqtt, entityConfig, config.mqtt_base + "_" + config.mqtt_device_name);
 
-                                // perform a discovery message
-                                newEntity.discovery_topic = config.discovery_prefix;
-                                newEntity.send_discover_msg();
-
-                                // save the new entity in the array
-                                // with the mqtt base as the index
+                                // save the new entity before PLC subscriptions are registered
                                 entities[newEntity.mqtt_name] = newEntity;
+
+                                newEntity.discovery_topic = config.discovery_prefix;
+                                newEntity.registerPlcSubscriptions();
+                                newEntity.send_discover_msg();
 
                                 sf.debug("New entity added: " + config.mqtt_base + "_" + config.mqtt_device_name + "/" + newEntity.mqtt_name);
                         });
@@ -68,12 +93,12 @@ function initEntities() {
 
 
 		// start loop
-		setInterval(() => {
-			plc_update_loop();
-		}, config.update_time);
+                plcUpdateInterval = setInterval(() => {
+                        plc_update_loop();
+                }, config.update_time);
 
-		// discovery broadcast loop
-		setInterval(() => {
+                // discovery broadcast loop
+                discoveryInterval = setInterval(() => {
                         for (const entityName in entities) {
                                 entities[entityName].send_discover_msg();
                         }

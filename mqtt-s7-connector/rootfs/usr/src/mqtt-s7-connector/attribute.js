@@ -38,13 +38,11 @@ module.exports = class attribute {
 		// optional write back changes from plc to set_plc
 		this.write_back = false;
 
-		// only subscribe if attribute is allowed to write to plc
-		if (this.write_to_s7) {
-			this.mqtt_handler.subscribe(this.full_mqtt_topic + "/set");
-			sf.debug("-- Subscribe to topic: '" + this.full_mqtt_topic + "/set'");
-		}
-
-		this.subscribePlcUpdates();
+                // only subscribe if attribute is allowed to write to plc
+                if (this.write_to_s7) {
+                        this.mqtt_handler.subscribe(this.full_mqtt_topic + "/set");
+                        sf.debug("-- Subscribe to topic: '" + this.full_mqtt_topic + "/set'");
+                }
 	}
 
 	// every attribute as to add itself to the plc_handler
