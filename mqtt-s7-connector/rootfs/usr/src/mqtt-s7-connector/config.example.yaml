@@ -35,7 +35,6 @@ devices:
     device_name: Dimmer number 1
   - name: Climate
     type: climate
-    state: DB56,X150.0
     current_temperature: DB51,REAL216
     target_temperature: DB56,REAL6
   - name: Cover
