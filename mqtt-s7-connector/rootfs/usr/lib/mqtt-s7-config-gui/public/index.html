@@ -52,6 +52,12 @@
               </dd>
             </div>
             <div>
+              <dt>Testmodus</dt>
+              <dd>
+                <span class="status-pill js-testmode-summary" data-variant="muted">Inaktiv</span>
+              </dd>
+            </div>
+            <div>
               <dt>Verwaltete Dateien</dt>
               <dd class="js-config-count">0</dd>
             </div>
@@ -95,6 +101,176 @@
               <select id="logLevel" name="logLevel"></select>
             </div>
           </article>
+          <article class="card test-mode-card">
+            <header class="card__header card__header--split">
+              <div>
+                <h2>Testmodus</h2>
+                <p>Simuliere eine S7-1200, um Konfigurationen ohne Hardware zu prüfen.</p>
+              </div>
+              <span class="badge badge--status js-testmode-badge" data-variant="muted">Inaktiv</span>
+            </header>
+            <p class="test-mode__description">
+              Im Testmodus übernimmt ein integrierter PLC-Simulator die Rolle deiner Steuerung und toggelt digitale
+              Ein-/Ausgänge sowie Analogwerte. Perfekt, um Automationen und Entitäten gefahrlos zu testen.
+            </p>
+            <button type="button" class="btn btn--primary" id="testModeToggle">Testmodus aktivieren</button>
+            <p class="form-status test-mode__status" id="testModeStatus" role="status" aria-live="polite"></p>
+          </article>
+        </section>
+
+        <section class="grid grid--form">
+          <article class="card">
+            <header class="card__header">
+              <h2>Allgemeine Einstellungen</h2>
+              <p>Basiskonfiguration für die Kommunikation mit Home Assistant.</p>
+            </header>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="generalUpdateTime">Update-Intervall (ms)</label>
+                <input type="number" id="generalUpdateTime" min="10" step="10" />
+              </div>
+              <div class="form-field">
+                <label for="generalTemperatureInterval">Temperatur-Intervall (ms)</label>
+                <input type="number" id="generalTemperatureInterval" min="1000" step="1000" />
+              </div>
+              <div class="form-field">
+                <label for="generalMqttBase">MQTT Basis</label>
+                <input type="text" id="generalMqttBase" />
+              </div>
+              <div class="form-field">
+                <label for="generalMqttDevice">MQTT Gerätename</label>
+                <input type="text" id="generalMqttDevice" />
+              </div>
+              <div class="form-field">
+                <label for="generalDiscoveryPrefix">Discovery Prefix</label>
+                <input type="text" id="generalDiscoveryPrefix" />
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="generalRetainMessages">
+                  <input type="checkbox" id="generalRetainMessages" />
+                  <span>MQTT Nachrichten behalten</span>
+                </label>
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="generalDiscoveryRetain">
+                  <input type="checkbox" id="generalDiscoveryRetain" />
+                  <span>Discovery Nachrichten behalten</span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card__header">
+              <h2>PLC-Verbindung</h2>
+              <p>Verbindungsparameter zur angebundenen Siemens SPS.</p>
+            </header>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="plcHost">Host / IP-Adresse</label>
+                <input type="text" id="plcHost" placeholder="z. B. 192.168.0.10" />
+              </div>
+              <div class="form-field">
+                <label for="plcPort">Port</label>
+                <input type="number" id="plcPort" min="1" max="65535" />
+              </div>
+              <div class="form-field">
+                <label for="plcRack">Rack</label>
+                <input type="number" id="plcRack" min="0" max="7" />
+              </div>
+              <div class="form-field">
+                <label for="plcSlot">Slot</label>
+                <input type="number" id="plcSlot" min="0" max="15" />
+              </div>
+              <div class="form-field">
+                <label for="plcLocalTsap">Lokale TSAP-ID</label>
+                <input type="text" id="plcLocalTsap" placeholder="z. B. 0x0100" />
+              </div>
+              <div class="form-field">
+                <label for="plcRemoteTsap">Remote TSAP-ID</label>
+                <input type="text" id="plcRemoteTsap" placeholder="z. B. 0x0300" />
+              </div>
+              <div class="form-field">
+                <label for="plcSimulationInterval">Simulationsintervall (ms)</label>
+                <input type="number" id="plcSimulationInterval" min="100" step="50" />
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="plcTestMode">
+                  <input type="checkbox" id="plcTestMode" />
+                  <span>PLC Testmodus aktivieren</span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card__header">
+              <h2>MQTT-Anbindung</h2>
+              <p>Zugangsdaten zum MQTT Broker.</p>
+            </header>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="mqttHost">Broker URL</label>
+                <input type="text" id="mqttHost" placeholder="z. B. mqtt://homeassistant.local" />
+              </div>
+              <div class="form-field">
+                <label for="mqttUser">Benutzername</label>
+                <input type="text" id="mqttUser" />
+              </div>
+              <div class="form-field">
+                <label for="mqttPassword">Passwort</label>
+                <input type="password" id="mqttPassword" />
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="mqttRejectUnauthorized">
+                  <input type="checkbox" id="mqttRejectUnauthorized" />
+                  <span>Zertifikate überprüfen</span>
+                </label>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="card plc-scan" id="plcScanCard">
+          <header class="card__header card__header--split">
+            <div>
+              <h2>Gefundene SPS-Adressen</h2>
+              <p>Scanne die angebundene SPS und erhalte eine Übersicht der verfügbaren Ein- und Ausgänge.</p>
+            </div>
+            <div class="plc-scan__actions">
+              <button type="button" class="btn btn--ghost" id="scanRefresh">Letzten Scan anzeigen</button>
+              <button type="button" class="btn btn--primary" id="scanTrigger">Scan starten</button>
+            </div>
+          </header>
+          <p class="form-status" id="scanStatus" role="status" aria-live="polite"></p>
+          <p class="plc-scan__meta js-scan-meta">–</p>
+          <div class="table-wrapper">
+            <table class="config-table plc-scan__table">
+              <thead>
+                <tr>
+                  <th scope="col">Adresse</th>
+                  <th scope="col">Bereich</th>
+                  <th scope="col">Bit</th>
+                  <th scope="col">Wert</th>
+                  <th scope="col">Quelle</th>
+                </tr>
+              </thead>
+              <tbody id="scanTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card" id="entityCard">
+          <header class="card__header card__header--split">
+            <div>
+              <h2>Home Assistant Entitäten</h2>
+              <p>Konfiguriere Entitäten und ordne die gefundenen SPS-Adressen zu.</p>
+            </div>
+            <div class="entity-toolbar">
+              <button type="button" class="btn btn--ghost" id="addEntity">Entität hinzufügen</button>
+            </div>
+          </header>
+          <div class="entity-list" id="entityList"></div>
         </section>
 
         <section class="card">
@@ -120,6 +296,55 @@
           </div>
         </section>
 
+        <section class="card file-editor" id="fileEditorCard">
+          <header class="card__header card__header--split">
+            <div>
+              <h2>Config-Datei bearbeiten</h2>
+              <p class="js-editor-subtitle">
+                Wähle eine Config-Datei aus der Liste, um den Inhalt anzupassen.
+              </p>
+            </div>
+            <div class="file-editor__toolbar">
+              <button type="button" class="btn btn--ghost" id="fileEditorExample" disabled>
+                Beispiel einfügen
+              </button>
+              <button type="button" class="btn btn--ghost" id="fileEditorReload" disabled>
+                Neu laden
+              </button>
+            </div>
+          </header>
+          <div class="file-editor__meta">
+            <dl>
+              <div>
+                <dt>Datei</dt>
+                <dd class="js-editor-filename">–</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd class="js-editor-file-status">Keine Datei ausgewählt</dd>
+              </div>
+              <div>
+                <dt>Zuletzt geändert</dt>
+                <dd class="js-editor-updated">–</dd>
+              </div>
+            </dl>
+          </div>
+          <label class="file-editor__label" for="fileEditorContent">Inhalt</label>
+          <textarea
+            id="fileEditorContent"
+            class="file-editor__textarea"
+            spellcheck="false"
+            disabled
+            placeholder="Wähle eine Config-Datei aus, um den Inhalt zu bearbeiten."
+          ></textarea>
+          <div class="file-editor__footer">
+            <button type="button" class="btn btn--primary" id="fileEditorSave" disabled>
+              Datei speichern
+            </button>
+            <span id="fileEditorStatus" class="form-status file-editor__status" role="status" aria-live="polite"></span>
+          </div>
+        </section>
+
         <section class="card form-actions-card">
           <div class="form-actions">
             <button type="submit" class="btn btn--primary">Änderungen speichern</button>
@@ -131,21 +356,35 @@
 
     <template id="config-row-template">
       <tr class="config-row">
-        <td>
+        <td data-label="Dateiname">
           <input type="text" class="config-row__input js-config-input" placeholder="z. B. config.yaml" />
         </td>
-        <td>
-          <span class="status-pill js-config-row-status" data-variant="info">Neu</span>
-        </td>
-        <td class="js-config-modified">–</td>
+        <td data-label="Status"><span class="status-pill status-pill--muted">Unbekannt</span></td>
+        <td data-label="Letzte Änderung"><span class="config-row__updated">–</span></td>
         <td class="config-table__actions">
-          <button type="button" class="btn btn--icon js-remove" aria-label="Datei entfernen">
-            <span aria-hidden="true">✕</span>
-          </button>
+          <button type="button" class="btn btn--ghost js-config-edit">Bearbeiten</button>
+          <button type="button" class="btn btn--ghost js-config-remove">Entfernen</button>
         </td>
       </tr>
     </template>
 
-    <script src="app.js" defer></script>
+    <template id="entity-template">
+      <article class="entity-card">
+        <header class="entity-card__header">
+          <div>
+            <h3 class="entity-card__title">Neue Entität</h3>
+            <p class="entity-card__subtitle"></p>
+          </div>
+          <div class="entity-card__actions">
+            <button type="button" class="btn btn--ghost js-entity-add-field">Feld hinzufügen</button>
+            <button type="button" class="btn btn--ghost js-entity-duplicate">Duplizieren</button>
+            <button type="button" class="btn btn--ghost js-entity-remove">Entfernen</button>
+          </div>
+        </header>
+        <div class="entity-card__content js-entity-content"></div>
+      </article>
+    </template>
+
+    <script src="app.js" type="module"></script>
   </body>
 </html>

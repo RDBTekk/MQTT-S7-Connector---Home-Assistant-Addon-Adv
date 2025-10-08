@@ -16,6 +16,9 @@ plc:
   host: 192.168.2.10
   rack: 0
   slot: 2
+  # Optional TSAP IDs for Siemens LOGO! controllers
+  # local_tsap_id: 0x0100
+  # remote_tsap_id: 0x0300
   debug: false
 
 mqtt:
@@ -24,7 +27,7 @@ mqtt:
   password: p
   rejectUnauthorized: true
 
-devices:
+entities:
   - name: Dimmable Light
     type: light
     state: DB56,X150.0
@@ -95,7 +98,26 @@ devices:
       plc: DB56,X150.0
       set_plc: DB56,X150.1
 
-  # Example of a device with two entities
+  - name: Ventilation Fan
+    type: fan
+    state: DB60,X0.0
+    percentage:
+      plc: DB60,BYTE1
+      rw: rw
+    preset_mode:
+      plc: DB60,BYTE2
+      rw: rw
+    preset_modes:
+      - eco
+      - boost
+
+  - name: Entry Lock
+    type: lock
+    state:
+      plc: DB61,X0.1
+      rw: rw
+
+  # Example of a gateway with two entities
   - device_name: DevTest Sensor 1
     name: Temperatur
     manufacturer: Psi-Systems
@@ -113,7 +135,7 @@ devices:
     value_template: "{{ (value | float / 10) | round(2) }}"
     device_class: humidity
 
-  # Example of a device with one entity
+  # Example of a gateway with one entity
   - device_name: DevTest Sensor 2
     name: Temperatur
     manufacturer: Psi-Systems

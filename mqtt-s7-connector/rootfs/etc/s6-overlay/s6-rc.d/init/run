@@ -32,19 +32,26 @@ if (!fs.existsSync(path)) {
   process.exit(0);
 }
 
-const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
+let content = fs.readFileSync(path, 'utf8');
+let renamed = false;
+if (/^(?!\s*#)\s*devices:/m.test(content) && !/^(?!\s*#)\s*entities:/m.test(content)) {
+  content = content.replace(/^(?!\s*#)(\s*)devices:(.*)$/m, (match, indent, rest) => `${indent}entities:${rest}`);
+  renamed = true;
+}
+
+const lines = content.split(/\r?\n/);
 const output = [];
-let inDevices = false;
-let deviceBlock = [];
+let inEntities = false;
+let entityBlock = [];
 let modified = false;
 
-const flushDevice = () => {
-  if (!deviceBlock.length) {
+const flushEntity = () => {
+  if (!entityBlock.length) {
     return;
   }
 
   let deviceType = null;
-  for (const entry of deviceBlock) {
+  for (const entry of entityBlock) {
     const stripped = entry.trim();
     if (stripped.startsWith('type:')) {
       deviceType = stripped.split(':', 2)[1].trim();
@@ -57,7 +64,7 @@ const flushDevice = () => {
     let skipBlock = false;
     let skipIndent = 0;
 
-    for (const entry of deviceBlock) {
+    for (const entry of entityBlock) {
       const strippedEntry = entry.replace(/^\s+/, '');
       const indent = entry.length - strippedEntry.length;
 
@@ -82,13 +89,13 @@ const flushDevice = () => {
       cleaned.push(entry);
     }
 
-    deviceBlock = cleaned;
+    entityBlock = cleaned;
   }
 
-  for (const entry of deviceBlock) {
+  for (const entry of entityBlock) {
     output.push(entry);
   }
-  deviceBlock = [];
+  entityBlock = [];
 };
 
 for (let idx = 0; idx < lines.length; idx += 1) {
@@ -96,50 +103,55 @@ for (let idx = 0; idx < lines.length; idx += 1) {
   const stripped = line.trim();
   const indent = line.length - stripped.length;
 
-  if (inDevices) {
+  if (inEntities) {
     if (indent === 2 && stripped.startsWith('- ')) {
-      flushDevice();
-      deviceBlock.push(line);
+      flushEntity();
+      entityBlock.push(line);
       continue;
     }
 
-    if (deviceBlock.length && (indent > 2 || stripped === '' || (indent === 2 && !stripped.startsWith('- ')))) {
-      deviceBlock.push(line);
+    if (entityBlock.length && (indent > 2 || stripped === '' || (indent === 2 && !stripped.startsWith('- ')))) {
+      entityBlock.push(line);
       continue;
     }
 
-    if (deviceBlock.length && indent < 2 && stripped !== '') {
-      flushDevice();
-      inDevices = false;
+    if (entityBlock.length && indent < 2 && stripped !== '') {
+      flushEntity();
+      inEntities = false;
       idx -= 1;
       continue;
     }
 
-    if (!deviceBlock.length && (indent >= 2 || stripped === '')) {
-      deviceBlock.push(line);
+    if (!entityBlock.length && (indent >= 2 || stripped === '')) {
+      entityBlock.push(line);
       continue;
     }
 
-    flushDevice();
-    inDevices = false;
+    flushEntity();
+    inEntities = false;
     idx -= 1;
     continue;
   }
 
   output.push(line);
-  if (stripped === 'devices:') {
-    inDevices = true;
-    deviceBlock = [];
+  if (stripped === 'entities:') {
+    inEntities = true;
+    entityBlock = [];
   }
 }
 
-if (inDevices) {
-  flushDevice();
+if (inEntities) {
+  flushEntity();
 }
 
-if (modified) {
+if (modified || renamed) {
   fs.writeFileSync(path, `${output.join('\n')}\n`);
-  console.log('Removed legacy climate state entries from config.yaml');
+  if (renamed) {
+    console.log('Renamed devices section to entities in config.yaml');
+  }
+  if (modified) {
+    console.log('Removed legacy climate state entries from config.yaml');
+  }
 }
 NODE
 )"

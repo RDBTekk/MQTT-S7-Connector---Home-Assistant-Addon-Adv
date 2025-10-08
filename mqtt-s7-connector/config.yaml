@@ -22,9 +22,11 @@ panel_icon: mdi:cog
 panel_title: MQTT S7 Konfiguration
 options:
   log_level: warning
+  test_mode: false
   config_files:
     - config.yaml
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
+  test_mode: bool
   config_files:
     - str?
