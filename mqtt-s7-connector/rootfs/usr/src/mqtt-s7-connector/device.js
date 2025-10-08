@@ -66,7 +66,7 @@ module.exports = class device {
 		}
 
                 let type;
-		if(new_attribute.plc_address.startsWith('DB')) {
+                if(new_attribute.plc_address.startsWith('DB')) {
 			// split the plc address to get the type
 			let offset = new_attribute.plc_address.split(',');
 			let params = offset[1].match(/(\d+|\D+)/g);
@@ -88,7 +88,7 @@ module.exports = class device {
 
 				return;
 			}
-		} else if(new_attribute.plc_address.startsWith('M')) {
+                } else if(new_attribute.plc_address.startsWith('M')) {
 			const parts = new_attribute.plc_address.match(/^(M[A-Z]?)(.*)/);
 			if(!parts) {
 				sf.debug("Invalid memory address '" + new_attribute.plc_address + "' at attribute '" + name + "'");
@@ -117,9 +117,42 @@ module.exports = class device {
 				sf.debug("Wrong datatype '" + type + "' at attribute '" + name + "', expected '" + required_type + "'");
 				return;
 			}
-		}
+                }
 
-		new_attribute.type = type;
+                if(!type) {
+                        if (required_type && required_type !== "") {
+                                type = required_type;
+                        } else {
+                                const ioMatch = new_attribute.plc_address.match(/^([IQ][A-Z]?)/);
+                                if(ioMatch) {
+                                        const area = ioMatch[1];
+                                        if(area.length === 1) {
+                                                type = 'X';
+                                        } else {
+                                                const suffix = area[1];
+                                                switch(suffix) {
+                                                        case 'B':
+                                                        case 'W':
+                                                        case 'D':
+                                                        case 'I':
+                                                                type = 'INT';
+                                                                break;
+                                                        case 'R':
+                                                                type = 'REAL';
+                                                                break;
+                                                        default:
+                                                                break;
+                                                }
+                                        }
+                                }
+                        }
+                }
+
+                if(!type) {
+                        type = 'X';
+                }
+
+                new_attribute.type = type;
 
 
 		sf.debug("- New attribute '" + new_attribute.full_mqtt_topic + "' was created");

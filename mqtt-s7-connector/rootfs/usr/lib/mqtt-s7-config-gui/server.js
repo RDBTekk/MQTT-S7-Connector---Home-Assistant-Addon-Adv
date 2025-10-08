@@ -1194,6 +1194,21 @@ const server = http.createServer((req, res) => {
       console.warn(`Ingress request URL parsing failed for '${normalizedUrl}': ${parseError.message}`);
       requestUrl = new URL('/', urlBase);
     }
+    const ingressSegments = requestUrl.pathname.split('/').filter(Boolean);
+
+    if (
+      req.method === 'GET' &&
+      ingressSegments[0] === 'api' &&
+      ingressSegments[1] === 'hassio_ingress' &&
+      ingressSegments.length === 3 &&
+      !requestUrl.pathname.endsWith('/')
+    ) {
+      const redirectTarget = `${requestUrl.pathname}/${requestUrl.search || ''}`;
+      res.writeHead(302, { Location: redirectTarget });
+      res.end();
+      return;
+    }
+
     let pathname = requestUrl.pathname;
 
     const rawSegments = pathname.split('/').filter(Boolean);
