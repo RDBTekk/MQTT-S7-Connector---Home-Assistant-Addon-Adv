@@ -114,6 +114,8 @@ class HaTransport {
 
                 const attributes = entity.attributes || {};
 
+                const commandMeta = new Map();
+
                 Object.keys(attributes).forEach((key) => {
                         const attr = attributes[key];
                         if (!attr || !attr.full_mqtt_topic) {
@@ -134,6 +136,12 @@ class HaTransport {
                                         attributeName: key,
                                         attribute: attr,
                                 });
+
+                                commandMeta.set(key, {
+                                        setTopic,
+                                        attribute: attr,
+                                        attributeName: key,
+                                });
                         }
 
                         if (this.pendingCommandTopics.has(setTopic)) {
@@ -141,16 +149,7 @@ class HaTransport {
                         }
                 });
 
-                const stateAttribute = attributes.state && attributes.state.write_to_s7 ? 'state' : Object.keys(attributes).find((key) => attributes[key] && attributes[key].write_to_s7);
-                if (stateAttribute) {
-                        const attr = attributes[stateAttribute];
-                        const setTopic = `${attr.full_mqtt_topic}/set`;
-                        this.entityCommandMeta.set(entityId, {
-                                setTopic,
-                                attribute: attr,
-                                attributeName: stateAttribute,
-                        });
-                }
+                this.entityCommandMeta.set(entityId, commandMeta);
 
                 this.ensureRegistrations(entityId).catch((error) => {
                         sf.debug(`Failed to register entity '${entityId}': ${error.message}`);
@@ -582,8 +581,8 @@ class HaTransport {
                         return;
                 }
 
-                const meta = this.entityCommandMeta.get(entityId);
-                if (!meta || !meta.setTopic) {
+                const metaMap = this.entityCommandMeta.get(entityId);
+                if (!metaMap || metaMap.size === 0) {
                         return;
                 }
 
@@ -592,15 +591,17 @@ class HaTransport {
                         return;
                 }
 
-                const payloadValue = this.extractCommandValue(newState, meta);
-                if (payloadValue === undefined) {
-                        return;
-                }
+                for (const meta of metaMap.values()) {
+                        const payloadValue = this.extractCommandValue(newState, meta);
+                        if (payloadValue === undefined) {
+                                continue;
+                        }
 
-                const payload = this.fromHaState(payloadValue, meta.attribute);
+                        const payload = this.fromHaState(payloadValue, meta.attribute);
 
-                if (typeof this.onMessage === 'function') {
-                        this.onMessage(meta.setTopic, payload);
+                        if (typeof this.onMessage === 'function') {
+                                this.onMessage(meta.setTopic, payload);
+                        }
                 }
         }
 
