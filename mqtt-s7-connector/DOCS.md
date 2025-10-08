@@ -10,12 +10,13 @@ This documentation file is edited so it will contain everything you need to know
 - [Addon options](#addon-options)
   - [Single PLC](#single-plc)
   - [Multiple PLC's](#multiple-plcs)
+  - [Test mode](#test-mode)
 - [Configuration](#configuration)
   - [Log level](#log-level)
   - [Config File](#config-file)
     - [`plc` Object](#plc-object)
     - [`mqtt` Object](#mqtt-object)
-    - [`devices` Object](#devices-object)
+    - [`entities` Object](#entities-object)
   - [Address formatting](#address-formatting)
   - [Device types and attributes](#device-types-and-attributes)
   - [Attribute Options](#attribute-options)
@@ -30,13 +31,13 @@ This documentation file is edited so it will contain everything you need to know
 
 ## Purpose
 
-This tool can receive data over mqtt and can write it to a designated address on a plc and vice versa, enabling smart home data to be displayed in the Home Assistant.
+This tool exposes Siemens PLC values as Home Assistant entities. By default it talks directly to the Home Assistant Core API, keeps device states in sync, and accepts commands without requiring an external broker. If desired, the connector can still publish MQTT discovery topics and state updates so that existing MQTT workflows continue to work.
 
 ## Requirements:
 
 - Home Assistant installation (HAOS or Supervised, other installation methods do not support addons)
-- a [MQTT broker](https://github.com/home-assistant/addons/tree/master/mosquitto)
-- the Home Assistant [MQTT integration](https://www.home-assistant.io/integrations/mqtt/)
+- Optional: a [MQTT broker](https://github.com/home-assistant/addons/tree/master/mosquitto) if you want to run the connector in MQTT mode
+- Optional: the Home Assistant [MQTT integration](https://www.home-assistant.io/integrations/mqtt/) to automatically import the discovery topics published in MQTT mode
 - Siemens PLC (S7-300,400,1200 or 1500) with an ethernet connection. I will add support for LOGO
 - Access to the PLC program/software
 
@@ -61,9 +62,22 @@ There are several log levels if there are problems changing the level to debug c
 
 `warning` is the recommended log level.
 
+### Integration mode
+
+The add-on can expose PLC data either directly through the Home Assistant Core API or via MQTT discovery topics.
+
+- `homeassistant` (default): the connector keeps a websocket connection to Home Assistant, registers devices/entities automatically and pushes state changes without needing a broker. This mode is recommended for new installations.
+- `mqtt`: enables the legacy MQTT workflow. Discovery topics and state updates are published to the configured broker and the Home Assistant MQTT integration needs to be enabled.
+
+When `homeassistant` mode is active the MQTT credentials in the web UI are disabled. You can still provide a custom API base URL or a long-lived token if the add-on runs outside of the Supervisor environment.
+
+To generate a long-lived token open **Benutzerprofil → Sicherheit → Token erstellen** in Home Assistant, copy the token once, and paste it into the GUI field. Tokens behave like passwords—keep them secret and rotate them if they leak. When the add-on runs inside the Supervisor environment the `SUPERVISOR_TOKEN` is injected automatically and no manual token is required.
+
+If you need to override the API base URL (for example when testing against a remote development instance), enter the full root including protocol and port, e.g. `https://ha.example.net:8123/api`. The connector will derive the websocket endpoint automatically.
+
 ### Config files
 
-Here you can add a config file for each PLC you want to connect with. The files should be placed in the `addon_configs\xxxxxxxx_mqtt-s7-connector` folder
+Here you can add a config file for each PLC you want to connect with. Store the files inside the Home Assistant `/config` share (for example `\config\mqtt-s7-connector` when using Samba).
 
 #### Single PLC
 
@@ -86,9 +100,23 @@ config_files:
   - config_plc2.yaml
 ```
 
+### Test mode
+
+When you want to build automations or validate MQTT topics without a live controller, enable the test mode in the add-on options (or via the web GUI button). The simulator behaves like a Siemens S7-1200: it keeps the connector running, publishes changing digital inputs, cycles analog values, and accepts write commands from Home Assistant entities. This makes it possible to design dashboards and logic before the real PLC is wired up.
+
+The option is stored as `test_mode: true` inside the add-on configuration. While the simulator is active the PLC host/port settings are ignored, so the container can start even if no hardware is reachable.
+
+### PLC address discovery and GUI dropdowns
+
+Use the **PLC scan** button in the ingress GUI to discover the connected controller. The add-on reads the configured input (`I`), output (`Q`) and marker (`M`) bytes (up to the `PLC_SCAN_BYTE_LIMIT`) and expands them into bit addresses. The results are presented in a table together with the byte, bit and data source.
+
+All detected addresses are grouped by area and exposed to the entity editor as dropdown options. When you edit an entity field such as `state`, `plc` or `set_plc`, the dropdown offers every scanned address plus all addresses already referenced in your configuration. You can still enter custom addresses manually – select **Eigene Adresse…** to open a text field – but for most use cases you can simply pick the detected value.
+
+If no PLC is reachable yet, trigger the scan once the hardware is online or enable the built-in test mode to generate simulated addresses.
+
 ## Configuration
 
-After installing the Addon and the initial run a folder is created, the `\addon_configs\xxxxxxxx_mqtt-s7-connector` folder. Inside this folder you'll find the [`config.example.yaml`](https://github.com/dixi83/mqtt-s7-connector/blob/master/config.example.yaml) file. This file contains an example of the configuration. Copy the file and rename it to `config.yaml` as a starting point. If you need multiple PLC connections then create for every connection a config file, and add the file names in your addon configuration.
+After installing the add-on and running it for the first time the connector copies `config.example.yaml` and `config.example.json` into the Home Assistant `/config` share. Use these examples as templates: duplicate `config.example.yaml` to `/config/config.yaml` (or create additional files such as `/config/config_plc1.yaml`) and reference the filenames in your add-on configuration.
 
 There are several ways to get access to this folder and files, e.g.:
 
@@ -109,7 +137,7 @@ and it is separated in 3 sections:
 
 - [`plc:`](#plc-object)
 - [`mqtt:`](#mqtt-object)
-- [`devices:`](#devices-object)
+- [`entities:`](#entities-object)
 
 #### `plc` Object
 
@@ -123,8 +151,34 @@ plc:
   host: 192.168.0.1
   rack: 0
   slot: 2
+  # Optional TSAP IDs for Siemens LOGO! and STEP7/TIA Portal connections
+  # local_tsap_id: 0x0100
+  # remote_tsap_id: 0x0300
   debug: false
+  # Optional simulator controls
+  # test_mode: true
+  # simulation_interval: 1000
 ```
+
+`local_tsap_id` and `remote_tsap_id` allow the add-on to talk to Siemens LOGO! or S7 controllers that expect explicit TSAP identifiers. The values can be expressed either as decimal integers or hexadecimal strings (for example `0x0100`). When the fields are omitted the connector behaves exactly like previous releases.
+
+If you enable `test_mode`, the connector starts the integrated simulator instead of connecting to a physical PLC. In this case the host, port, rack and slot values are ignored, letting you run the add-on without any hardware.
+
+#### `integration` Object
+
+_selects how the connector exposes PLC data to Home Assistant_
+
+```yaml
+integration:
+  mode: homeassistant
+  homeassistant:
+    base_url: http://supervisor/core/api
+    # access_token: <long lived token when running outside the Supervisor>
+```
+
+- `mode` can be `homeassistant` (default) or `mqtt`.
+- The optional `homeassistant.base_url` overrides the API endpoint; by default the Supervisor proxy is used.
+- `homeassistant.access_token` allows you to supply a long-lived access token when the Supervisor token is not available (e.g. during local development).
 
 #### `mqtt` Object
 
@@ -143,17 +197,17 @@ mqtt:
   rejectUnauthorized: true
 ```
 
-#### `devices` Object
+#### `entities` Object
 
-_list of all registered devices_
+_list of all registered entities_
 
-the list of devices is implemented as an array in yaml.  
-each device has its own entry in this list and will be configured there.
+the list of entities is implemented as an array in yaml.  
+each entity entry lives inside this list and will be configured there.
 
-Each device has to have a 'name' entry and a 'type' entry, the remaining attributes are optional
+Each entity requires at least a 'name' and a 'type'; all other attributes are optional
 
 ```yaml
-devices:
+entities:
   - name: Dimmable Light,
     type: light,
     state: DB56,X150.0,
@@ -180,56 +234,58 @@ REAL = 4 Bytes (32 Bit) -> converted to Float
 
 For more information see the [NodeS7 Repository](https://github.com/plcpeople/nodeS7#examples)
 
-### Device types and attributes
+### Entity types and attributes
 
-The device type categories are based on the categories from Home Assistant  
+The entity type categories mirror the [Home Assistant MQTT components](https://www.home-assistant.io/integrations/#search/mqtt).
 **It is strongly recommended to look into the [example configuration file](https://github.com/timroemisch/mqtt-s7-connector/blob/master/config.example.json) !!**
 
-Current list of supported device types with supported attributes:
+Current list of supported entity types with key attributes:
 
-- light
-  - `state` _(X)_  
-    on/off state of the device
+- `light`
+  - `state` _(X)_ &mdash; on/off state of the entity
+  - `brightness` _(BYTE)_ &mdash; value between 0-255
 
-  - `brightness` _(BYTE)_  
-    value between 0-255
+- `sensor`
+  - `state` _(X/BYTE/REAL)_ &mdash; sensor reading (_read-only by default_)
 
-- sensor
-  - `state` _(X/BYTE/REAL)_  
-    state of device  
-    _is readonly by default_
+- `switch`
+  - `state` _(X)_ &mdash; on/off state of the entity
 
-- switch
-  - `state` _(X)_  
-    on/off state of the device
+- `button`
+  - `state` _(X)_ &mdash; write-only trigger bit used to emulate momentary buttons
 
-- climate
+- `number`
+  - `state` _(BYTE/REAL/INT)_ &mdash; numeric value exposed through a slider or input box
+
+- `climate`
   - `target_temperature` _(REAL)_
+  - `current_temperature` _(REAL)_ (_read-only by default; updates every 15 minutes unless configured otherwise_)
 
-  - `current_temperature` _(REAL)_  
-    _readonly by default_  
-    _update_interval is 15 min by default_
+- `heater`
+  - `target_temperature` _(REAL)_
+  - `current_temperature` _(REAL)_ (_read-only by default_)
+  - Optional tuning keys such as `min_temp`, `max_temp`, and `temp_step`
 
-- cover
+- `cover`
   - `targetPosition` _(BYTE)_
-
   - `tiltAngle` _(BYTE)_
+  - `currentPosition` _(BYTE)_ (_read-only by default_)
+  - `currentTiltAngle` _(BYTE)_ (_read-only by default_)
+  - `trigger` _(X)_ &mdash; internal helper bit toggled whenever a movement command is issued
 
-  - `currentPosition` _(BYTE)_  
-    _readonly by default_
-
-  - `currentTiltAngle` _(BYTE)_  
-    _readonly by default_
-
-  - `trigger` _(X)_  
-    **internal value**: it won't be exposed over mqtt  
-    this bit will be turned on and off automatically after one of the other attributes of the cover will be changed
-
-- binaryCover
+- `binarycover`
   - `targetPosition` _(X)_
+  - `currentPosition` _(X)_ (_read-only by default_)
 
-  - `currentPosition` _(X)_  
-    _readonly by default_
+- `fan`
+  - `state` _(X)_ &mdash; on/off state of the fan
+  - `percentage` _(BYTE)_ &mdash; fan speed in percent (0-100 by default)
+  - `preset_mode` _(BYTE/STRING)_ &mdash; optional preset selector for modes such as *eco* or *boost*
+
+- `lock`
+  - `state` _(X)_ &mdash; locked/unlocked flag for doors, gates or valves
+
+These entity definitions can be combined with Home Assistant metadata such as `device_name`, `device_class`, `value_template` or `command_template` to fine-tune discovery behaviour.
 
 ### Attribute Options
 
@@ -334,6 +390,29 @@ If your device has multiple sensors/lights/switches etc., you can set for each i
 ```
 
 ![garage door example result](images/HA-device.png)
+
+## Engineering tool quick-start
+
+### TIA Portal
+
+1. Öffne im Projektbaum **Geräte & Netze** und ermittle unter *Online & Diagnose* den verwendeten Rack/Slot der CPU.
+2. Lege unter *PLC-Verbindungen* eine neue Verbindung vom Typ „anderer Station“ an und setze den **Remote-TSAP** z. B. auf `03.00`.
+3. Trage den **Local-TSAP** `01.00` für den MQTT-S7-Connector ein und aktiviere den Kommunikationspartner.
+4. Lade die Hardwarekonfiguration neu auf die CPU, damit die geänderten TSAP-Werte wirksam werden.
+
+### STEP 7 Classic
+
+1. Öffne NetPro, füge über *Einfügen > Neue Verbindung* eine „S7-Verbindung“ zu einem externen Partner hinzu.
+2. Weise der Verbindung die CPU zu und setze **Local-TSAP** `01.00` sowie **Remote-TSAP** `03.00` (hexadezimal).
+3. Speichere und übersetze die Hardwarekonfiguration und lade sie anschließend auf die Steuerung.
+4. Nach dem Laden zeigt NetPro den Status der Verbindung als „Wird betrieben“ – die TSAP IDs sind aktiv.
+
+### LOGO!Soft Comfort
+
+1. Öffne *Tools > Ethernet-Verbindungen* und füge eine neue Verbindung vom Typ „S7 Kommunikation“ hinzu.
+2. Wähle den relevanten Funktions- oder Datenbaustein, dessen Werte mit Home Assistant synchronisiert werden sollen.
+3. Setze den **Local-TSAP** auf `01.00` und den **Remote-TSAP** auf `03.00`; aktiviere bei Bedarf zyklisches Schreiben.
+4. Übertrage die Konfiguration in die LOGO! und prüfe im Verbindungsmonitor, ob der Status „Verbunden“ angezeigt wird.
 
 ## Auto Discovery
 

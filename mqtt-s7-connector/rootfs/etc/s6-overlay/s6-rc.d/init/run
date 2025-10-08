@@ -4,7 +4,161 @@
 # Home Assistant Add-on: MQTT S7 Connector
 # Copies the example config files
 # ==============================================================================
+
 bashio::log.info "Copying example config files..."
 
 cp -n /usr/src/mqtt-s7-connector/config.example.yaml /config/
 cp -n /usr/src/mqtt-s7-connector/config.example.json /config/
+
+if ! bashio::fs.file_exists "/config/config.yaml"; then
+    if bashio::fs.file_exists "/config/config.example.yaml"; then
+        bashio::log.info "Creating initial config.yaml from example"
+        cp /config/config.example.yaml /config/config.yaml
+    else
+        bashio::log.warning "config.example.yaml missing, creating empty config.yaml"
+        cat <<'EOF' > /config/config.yaml
+log_level: warning
+config_files: []
+EOF
+    fi
+fi
+
+if bashio::fs.file_exists "/config/config.yaml"; then
+    removed="$(node <<'NODE'
+const fs = require('fs');
+const path = '/config/config.yaml';
+
+if (!fs.existsSync(path)) {
+  process.exit(0);
+}
+
+let content = fs.readFileSync(path, 'utf8');
+let renamed = false;
+if (/^(?!\s*#)\s*devices:/m.test(content) && !/^(?!\s*#)\s*entities:/m.test(content)) {
+  content = content.replace(/^(?!\s*#)(\s*)devices:(.*)$/m, (match, indent, rest) => `${indent}entities:${rest}`);
+  renamed = true;
+}
+
+const lines = content.split(/\r?\n/);
+const output = [];
+let inEntities = false;
+let entityBlock = [];
+let modified = false;
+
+const flushEntity = () => {
+  if (!entityBlock.length) {
+    return;
+  }
+
+  let deviceType = null;
+  for (const entry of entityBlock) {
+    const stripped = entry.trim();
+    if (stripped.startsWith('type:')) {
+      deviceType = stripped.split(':', 2)[1].trim();
+      break;
+    }
+  }
+
+  if (deviceType === 'climate') {
+    const cleaned = [];
+    let skipBlock = false;
+    let skipIndent = 0;
+
+    for (const entry of entityBlock) {
+      const strippedEntry = entry.replace(/^\s+/, '');
+      const indent = entry.length - strippedEntry.length;
+
+      if (skipBlock) {
+        if (indent > skipIndent) {
+          modified = true;
+          continue;
+        }
+        skipBlock = false;
+      }
+
+      if (indent >= 4 && strippedEntry.startsWith('state:')) {
+        modified = true;
+        const value = strippedEntry.split(':', 2)[1].trim();
+        if (!value || value.startsWith('|') || value.startsWith('>')) {
+          skipBlock = true;
+          skipIndent = indent;
+        }
+        continue;
+      }
+
+      cleaned.push(entry);
+    }
+
+    entityBlock = cleaned;
+  }
+
+  for (const entry of entityBlock) {
+    output.push(entry);
+  }
+  entityBlock = [];
+};
+
+for (let idx = 0; idx < lines.length; idx += 1) {
+  const line = lines[idx];
+  const stripped = line.trim();
+  const indent = line.length - stripped.length;
+
+  if (inEntities) {
+    if (indent === 2 && stripped.startsWith('- ')) {
+      flushEntity();
+      entityBlock.push(line);
+      continue;
+    }
+
+    if (entityBlock.length && (indent > 2 || stripped === '' || (indent === 2 && !stripped.startsWith('- ')))) {
+      entityBlock.push(line);
+      continue;
+    }
+
+    if (entityBlock.length && indent < 2 && stripped !== '') {
+      flushEntity();
+      inEntities = false;
+      idx -= 1;
+      continue;
+    }
+
+    if (!entityBlock.length && (indent >= 2 || stripped === '')) {
+      entityBlock.push(line);
+      continue;
+    }
+
+    flushEntity();
+    inEntities = false;
+    idx -= 1;
+    continue;
+  }
+
+  output.push(line);
+  if (stripped === 'entities:') {
+    inEntities = true;
+    entityBlock = [];
+  }
+}
+
+if (inEntities) {
+  flushEntity();
+}
+
+if (modified || renamed) {
+  fs.writeFileSync(path, `${output.join('\n')}\n`);
+  if (renamed) {
+    console.log('Renamed devices section to entities in config.yaml');
+  }
+  if (modified) {
+    console.log('Removed legacy climate state entries from config.yaml');
+  }
+}
+NODE
+)"
+
+    if [[ -n "${removed}" ]]; then
+        bashio::log.warning "${removed}"
+    fi
+fi
+
+bashio::log.info "Example config files copied"
