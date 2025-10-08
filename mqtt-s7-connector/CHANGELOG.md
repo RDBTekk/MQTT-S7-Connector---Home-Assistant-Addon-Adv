@@ -1,5 +1,14 @@
 **Please note:**
-Soon the update will contain the preparations and for the object rename form `devices` to `enities`.
+Configuration files now use the `entities` array instead of `devices`. Existing setups are migrated automatically during container startup.
+
+## 1.0.10
+
+- feat: add an optional PLC test mode that simulates a Siemens S7-1200 including digital and analog signals
+- feat: extend the web UI so the simulator can be toggled and its state is shown in the dashboard
+- feat: detect PLC inputs/outputs, list them in the GUI scan table, and offer the addresses as grouped dropdown options when editing entities
+- feat: add a guided entity wizard with templates (Lampe, Ventil, Garagentor, Sensoren usw.) und automatischen MQTT-/Adressvorschlägen
+- feat: ergänze vordefinierte Dropdowns für MQTT-Basis, Gerätenamen, Discovery-Prefix sowie PLC-Port/Rack/Slot und TSAP-IDs mit optionalen Freitextfeldern
+- feat: liefere MQTT-Topic-Vorschläge pro Entität basierend auf Basis- und Gerätenamen, inklusive schneller Umschaltung auf eigene Werte
 
 ## 1.0.8
 

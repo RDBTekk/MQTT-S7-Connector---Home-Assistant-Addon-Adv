@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MQTT S7 Connector – Konfiguration</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="card hero">
+        <div class="hero__top">
+          <div>
+            <p class="hero__eyebrow">Home Assistant Add-on</p>
+            <h1 class="hero__title js-addon-name">MQTT S7 Connector</h1>
+            <p class="hero__subtitle js-addon-description">
+              Verwalte die Konfiguration des MQTT Siemens S7 Connectors direkt im Browser.
+            </p>
+          </div>
+          <div class="hero__badges">
+            <span class="badge badge--status js-addon-status" data-variant="unknown">Status unbekannt</span>
+            <span class="badge badge--version">Version <span class="js-addon-version">–</span></span>
+          </div>
+        </div>
+        <dl class="hero__meta">
+          <div>
+            <dt>Slug</dt>
+            <dd class="js-addon-slug">–</dd>
+          </div>
+          <div>
+            <dt>Konfigurationspfad</dt>
+            <dd class="js-config-path">–</dd>
+          </div>
+          <div>
+            <dt>Letzte Änderung</dt>
+            <dd class="js-config-updated">–</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="grid">
+        <article class="card overview">
+          <header class="card__header">
+            <h2>Systemübersicht</h2>
+            <p>Aktueller Zustand der Konfiguration</p>
+          </header>
+          <dl class="detail-list">
+            <div>
+              <dt>Konfigurationsdatei</dt>
+              <dd>
+                <span class="status-pill js-config-status-badge" data-variant="warning">Nicht gefunden</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Testmodus</dt>
+              <dd>
+                <span class="status-pill js-testmode-summary" data-variant="muted">Inaktiv</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Verwaltete Dateien</dt>
+              <dd class="js-config-count">0</dd>
+            </div>
+            <div>
+              <dt>Letzte Aktualisierung</dt>
+              <dd class="js-config-updated-secondary">–</dd>
+            </div>
+          </dl>
+        </article>
+        <article class="card info">
+          <header class="card__header">
+            <h2>Add-on Informationen</h2>
+            <p>Allgemeine Details zur Installation</p>
+          </header>
+          <dl class="detail-list">
+            <div>
+              <dt>Add-on Name</dt>
+              <dd class="js-addon-name-secondary">–</dd>
+            </div>
+            <div>
+              <dt>Version</dt>
+              <dd class="js-addon-version-secondary">–</dd>
+            </div>
+            <div>
+              <dt>Slug</dt>
+              <dd class="js-addon-slug-secondary">–</dd>
+            </div>
+          </dl>
+        </article>
+      </section>
+
+      <form id="config-form" class="config-form" novalidate>
+        <section class="grid grid--form">
+          <article class="card">
+            <header class="card__header">
+              <h2>Protokollierung</h2>
+              <p>Steuere das Log-Level des Add-ons</p>
+            </header>
+            <div class="form-field">
+              <label for="logLevel">Log-Level</label>
+              <select id="logLevel" name="logLevel"></select>
+            </div>
+          </article>
+          <article class="card test-mode-card">
+            <header class="card__header card__header--split">
+              <div>
+                <h2>Testmodus</h2>
+                <p>Simuliere eine S7-1200, um Konfigurationen ohne Hardware zu prüfen.</p>
+              </div>
+              <span class="badge badge--status js-testmode-badge" data-variant="muted">Inaktiv</span>
+            </header>
+            <p class="test-mode__description">
+              Im Testmodus übernimmt ein integrierter PLC-Simulator die Rolle deiner Steuerung und toggelt digitale
+              Ein-/Ausgänge sowie Analogwerte. Perfekt, um Automationen und Entitäten gefahrlos zu testen.
+            </p>
+            <button type="button" class="btn btn--primary" id="testModeToggle">Testmodus aktivieren</button>
+            <p class="form-status test-mode__status" id="testModeStatus" role="status" aria-live="polite"></p>
+          </article>
+        </section>
+
+        <section class="grid grid--form">
+          <article class="card">
+            <header class="card__header">
+              <h2>Allgemeine Einstellungen</h2>
+              <p>Basiskonfiguration für die Kommunikation mit Home Assistant.</p>
+            </header>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="generalUpdateTime">Update-Intervall (ms)</label>
+                <input type="number" id="generalUpdateTime" min="10" step="10" />
+              </div>
+              <div class="form-field">
+                <label for="generalTemperatureInterval">Temperatur-Intervall (ms)</label>
+                <input type="number" id="generalTemperatureInterval" min="1000" step="1000" />
+              </div>
+              <div class="form-field">
+                <label for="generalMqttBase">MQTT Basis</label>
+                <div class="input-combo">
+                  <select id="generalMqttBase" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="generalMqttBaseCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigene MQTT Basis"
+                  />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="generalMqttDevice">MQTT Gerätename</label>
+                <div class="input-combo">
+                  <select id="generalMqttDevice" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="generalMqttDeviceCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigener Gerätename"
+                  />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="generalDiscoveryPrefix">Discovery Prefix</label>
+                <div class="input-combo">
+                  <select id="generalDiscoveryPrefix" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="generalDiscoveryPrefixCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigenes Discovery Prefix"
+                  />
+                </div>
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="generalRetainMessages">
+                  <input type="checkbox" id="generalRetainMessages" />
+                  <span>MQTT Nachrichten behalten</span>
+                </label>
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="generalDiscoveryRetain">
+                  <input type="checkbox" id="generalDiscoveryRetain" />
+                  <span>Discovery Nachrichten behalten</span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card__header">
+              <h2>PLC-Verbindung</h2>
+              <p>Verbindungsparameter zur angebundenen Siemens SPS.</p>
+            </header>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="plcHost">Host / IP-Adresse</label>
+                <input type="text" id="plcHost" placeholder="z. B. 192.168.0.10" />
+              </div>
+              <div class="form-field">
+                <label for="plcPort">Port</label>
+                <div class="input-combo">
+                  <select id="plcPort" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcPortCustom"
+                    class="input-combo__custom"
+                    min="1"
+                    max="65535"
+                    placeholder="Eigener Port"
+                  />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="plcRack">Rack</label>
+                <div class="input-combo">
+                  <select id="plcRack" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcRackCustom"
+                    class="input-combo__custom"
+                    min="0"
+                    max="7"
+                    placeholder="Eigenes Rack"
+                  />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="plcSlot">Slot</label>
+                <div class="input-combo">
+                  <select id="plcSlot" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcSlotCustom"
+                    class="input-combo__custom"
+                    min="0"
+                    max="15"
+                    placeholder="Eigener Slot"
+                  />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="plcLocalTsap">Lokale TSAP-ID</label>
+                <div class="input-combo">
+                  <select id="plcLocalTsap" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="plcLocalTsapCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigene lokale TSAP-ID"
+                  />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="plcRemoteTsap">Remote TSAP-ID</label>
+                <div class="input-combo">
+                  <select id="plcRemoteTsap" class="input-combo__select"></select>
+                  <input
+                    type="text"
+                    id="plcRemoteTsapCustom"
+                    class="input-combo__custom"
+                    placeholder="Eigene Remote TSAP-ID"
+                  />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="plcSimulationInterval">Simulationsintervall (ms)</label>
+                <div class="input-combo">
+                  <select id="plcSimulationInterval" class="input-combo__select"></select>
+                  <input
+                    type="number"
+                    id="plcSimulationIntervalCustom"
+                    class="input-combo__custom"
+                    min="10"
+                    step="10"
+                    placeholder="Eigenes Intervall"
+                  />
+                </div>
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="plcTestMode">
+                  <input type="checkbox" id="plcTestMode" />
+                  <span>PLC Testmodus aktivieren</span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card__header">
+              <h2>MQTT-Anbindung</h2>
+              <p>Zugangsdaten zum MQTT Broker.</p>
+            </header>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="mqttHost">Broker URL</label>
+                <input type="text" id="mqttHost" placeholder="z. B. mqtt://homeassistant.local" />
+              </div>
+              <div class="form-field">
+                <label for="mqttUser">Benutzername</label>
+                <input type="text" id="mqttUser" />
+              </div>
+              <div class="form-field">
+                <label for="mqttPassword">Passwort</label>
+                <input type="password" id="mqttPassword" />
+              </div>
+              <div class="form-field form-field--checkbox">
+                <label class="checkbox" for="mqttRejectUnauthorized">
+                  <input type="checkbox" id="mqttRejectUnauthorized" />
+                  <span>Zertifikate überprüfen</span>
+                </label>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="card plc-scan" id="plcScanCard">
+          <header class="card__header card__header--split">
+            <div>
+              <h2>Gefundene SPS-Adressen</h2>
+              <p>Scanne die angebundene SPS und erhalte eine Übersicht der verfügbaren Ein- und Ausgänge.</p>
+            </div>
+            <div class="plc-scan__actions">
+              <button type="button" class="btn btn--ghost" id="scanRefresh">Letzten Scan anzeigen</button>
+              <button type="button" class="btn btn--primary" id="scanTrigger">Scan starten</button>
+            </div>
+          </header>
+          <p class="form-status" id="scanStatus" role="status" aria-live="polite"></p>
+          <p class="plc-scan__meta js-scan-meta">–</p>
+          <div class="table-wrapper">
+            <table class="config-table plc-scan__table">
+              <thead>
+                <tr>
+                  <th scope="col">Adresse</th>
+                  <th scope="col">Bereich</th>
+                  <th scope="col">Bit</th>
+                  <th scope="col">Wert</th>
+                  <th scope="col">Quelle</th>
+                </tr>
+              </thead>
+              <tbody id="scanTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card" id="entityCard">
+          <header class="card__header card__header--split">
+            <div>
+              <h2>Home Assistant Entitäten</h2>
+              <p>Konfiguriere Entitäten und ordne die gefundenen SPS-Adressen zu.</p>
+            </div>
+            <div class="entity-toolbar">
+              <button type="button" class="btn btn--ghost" id="addEntity">Entität hinzufügen</button>
+            </div>
+          </header>
+          <div class="entity-list" id="entityList"></div>
+        </section>
+
+        <section class="card">
+          <header class="card__header card__header--split">
+            <div>
+              <h2>Verknüpfte Config-Dateien</h2>
+              <p>Verwalte die Dateien, die das Add-on automatisch lädt.</p>
+            </div>
+            <button type="button" id="addFile" class="btn btn--ghost">Datei hinzufügen</button>
+          </header>
+          <div class="table-wrapper">
+            <table class="config-table">
+              <thead>
+                <tr>
+                  <th scope="col">Dateiname</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Letzte Änderung</th>
+                  <th scope="col" class="config-table__actions">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="configTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card file-editor" id="fileEditorCard">
+          <header class="card__header card__header--split">
+            <div>
+              <h2>Config-Datei bearbeiten</h2>
+              <p class="js-editor-subtitle">
+                Wähle eine Config-Datei aus der Liste, um den Inhalt anzupassen.
+              </p>
+            </div>
+            <div class="file-editor__toolbar">
+              <button type="button" class="btn btn--ghost" id="fileEditorExample" disabled>
+                Beispiel einfügen
+              </button>
+              <button type="button" class="btn btn--ghost" id="fileEditorReload" disabled>
+                Neu laden
+              </button>
+            </div>
+          </header>
+          <div class="file-editor__meta">
+            <dl>
+              <div>
+                <dt>Datei</dt>
+                <dd class="js-editor-filename">–</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd class="js-editor-file-status">Keine Datei ausgewählt</dd>
+              </div>
+              <div>
+                <dt>Zuletzt geändert</dt>
+                <dd class="js-editor-updated">–</dd>
+              </div>
+            </dl>
+          </div>
+          <label class="file-editor__label" for="fileEditorContent">Inhalt</label>
+          <textarea
+            id="fileEditorContent"
+            class="file-editor__textarea"
+            spellcheck="false"
+            disabled
+            placeholder="Wähle eine Config-Datei aus, um den Inhalt zu bearbeiten."
+          ></textarea>
+          <div class="file-editor__footer">
+            <button type="button" class="btn btn--primary" id="fileEditorSave" disabled>
+              Datei speichern
+            </button>
+            <span id="fileEditorStatus" class="form-status file-editor__status" role="status" aria-live="polite"></span>
+          </div>
+        </section>
+
+        <section class="card form-actions-card">
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Änderungen speichern</button>
+            <span id="status" class="form-status" role="status" aria-live="polite"></span>
+          </div>
+        </section>
+      </form>
+
+      <div class="modal" id="entityWizard" aria-hidden="true">
+        <div class="modal__backdrop" data-close="entityWizard"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="entityWizardTitle">
+          <header class="modal__header">
+            <h2 id="entityWizardTitle">Neue Entität erstellen</h2>
+            <button type="button" class="modal__close" id="entityWizardClose" aria-label="Schließen">×</button>
+          </header>
+          <form id="entityWizardForm" class="modal__body">
+            <div class="form-field">
+              <label for="entityWizardDirection">Signalrichtung</label>
+              <select id="entityWizardDirection">
+                <option value="output">Ausgang / Aktor</option>
+                <option value="input">Eingang / Sensor</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="entityWizardCategory">Vorlage</label>
+              <select id="entityWizardCategory"></select>
+              <p class="form-hint js-wizard-description">Wähle eine Vorlage, um passende Felder zu erhalten.</p>
+            </div>
+            <div class="form-field">
+              <label for="entityWizardName">Anzeigename</label>
+              <input type="text" id="entityWizardName" placeholder="z. B. Wohnzimmerlampe" />
+            </div>
+            <div class="form-field">
+              <label>Automatische Einstellungen</label>
+              <div class="wizard-preview">
+                <p>
+                  MQTT Topic: <strong class="js-wizard-topic">–</strong>
+                </p>
+                <p class="js-wizard-address-hint">SPS-Adressen werden passend vorgeschlagen.</p>
+              </div>
+            </div>
+          </form>
+          <footer class="modal__footer">
+            <button type="button" class="btn btn--ghost" id="entityWizardCancel">Abbrechen</button>
+            <button type="submit" form="entityWizardForm" class="btn btn--primary" id="entityWizardConfirm">
+              Entität erstellen
+            </button>
+          </footer>
+        </div>
+      </div>
+    </main>
+
+    <template id="config-row-template">
+      <tr class="config-row">
+        <td data-label="Dateiname">
+          <input type="text" class="config-row__input js-config-input" placeholder="z. B. config.yaml" />
+        </td>
+        <td data-label="Status"><span class="status-pill status-pill--muted">Unbekannt</span></td>
+        <td data-label="Letzte Änderung"><span class="config-row__updated">–</span></td>
+        <td class="config-table__actions">
+          <button type="button" class="btn btn--ghost js-config-edit">Bearbeiten</button>
+          <button type="button" class="btn btn--ghost js-config-remove">Entfernen</button>
+        </td>
+      </tr>
+    </template>
+
+    <template id="entity-template">
+      <article class="entity-card">
+        <header class="entity-card__header">
+          <div>
+            <h3 class="entity-card__title">Neue Entität</h3>
+            <p class="entity-card__subtitle"></p>
+          </div>
+          <div class="entity-card__actions">
+            <button type="button" class="btn btn--ghost js-entity-add-field">Feld hinzufügen</button>
+            <button type="button" class="btn btn--ghost js-entity-duplicate">Duplizieren</button>
+            <button type="button" class="btn btn--ghost js-entity-remove">Entfernen</button>
+          </div>
+        </header>
+        <div class="entity-card__content js-entity-content"></div>
+      </article>
+    </template>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
