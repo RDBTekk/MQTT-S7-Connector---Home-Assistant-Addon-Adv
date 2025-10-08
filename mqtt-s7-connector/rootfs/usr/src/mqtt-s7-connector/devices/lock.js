@@ -1,8 +1,8 @@
 let device = require('../device.js');
 
 module.exports = class devLock extends device {
-        constructor(plc, mqtt, config, mqtt_base) {
-                super(plc, mqtt, config, mqtt_base);
+        constructor(plc, mqtt, config) {
+                super(plc, mqtt, config);
 
                 if (config.state) {
                         this.create_attribute(config.state, 'X', 'state');

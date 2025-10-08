@@ -1180,7 +1180,11 @@ function serveStaticFile(filePath, res) {
 
 const server = http.createServer((req, res) => {
   try {
-    const requestUrl = new URL(req.url, `http://${req.headers.host}`);
+    const hostHeader = typeof req.headers.host === 'string' && req.headers.host.trim().length > 0
+      ? req.headers.host.trim()
+      : null;
+    const urlBase = hostHeader ? `http://${hostHeader}` : 'http://localhost';
+    const requestUrl = new URL(req.url, urlBase);
     const pathname = requestUrl.pathname;
 
     if (req.method === 'GET' && pathname === '/api/config') {
