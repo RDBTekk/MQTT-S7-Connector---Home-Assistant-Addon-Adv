@@ -21,7 +21,7 @@ Dieses Add-on enthält nun eine integrierte Weboberfläche, über die sich alle 
 - Visualisierung von Add-on-Metadaten, Konfigurationsstatus sowie Dateidetails (Existenz & letzte Änderung).
 - Validierung der Eingaben sowie sofortiges Speichern direkt in die bestehende `config.yaml` des Add-ons.
 
-Die Oberfläche wird automatisch gestartet, sobald der Container läuft, und ist standardmäßig auf Port `8099` verfügbar (Ingress). Die zugrunde liegende `config.yaml` wird bei Bedarf aus einer Vorlage erzeugt, sodass immer eine bearbeitbare Konfigurationsdatei vorhanden ist.
+Die Oberfläche wird automatisch gestartet, sobald der Container läuft, und ist standardmäßig auf Port `8099` verfügbar (Ingress). Beim ersten Start legt das Add-on zusätzlich die Dateien `config.example.yaml` und `config.example.json` im `/config/`-Verzeichnis an und erstellt daraus bei Bedarf eine initiale `config.yaml`, sodass immer eine bearbeitbare Konfigurationsdatei vorhanden ist.
 
 ## Credits
 

@@ -10,4 +10,17 @@ bashio::log.info "Copying example config files..."
 cp -n /usr/src/mqtt-s7-connector/config.example.yaml /config/
 cp -n /usr/src/mqtt-s7-connector/config.example.json /config/
 
+if ! bashio::fs.file_exists "/config/config.yaml"; then
+    if bashio::fs.file_exists "/config/config.example.yaml"; then
+        bashio::log.info "Creating initial config.yaml from example"
+        cp /config/config.example.yaml /config/config.yaml
+    else
+        bashio::log.warning "config.example.yaml missing, creating empty config.yaml"
+        cat <<'EOF' > /config/config.yaml
+log_level: warning
+config_files: []
+EOF
+    fi
+fi
+
 bashio::log.info "Example config files copied"
