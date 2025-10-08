@@ -1,0 +1,192 @@
+{
+  "debug_level": 2,
+  "update_time": 10000,
+  "temperature_interval": 900000,
+  "mqtt_base": "s7",
+  "retain_messages": true,
+  "discovery_prefix": "homeassistant",
+  "discovery_retain": false,
+  "integration": {
+    "mode": "homeassistant",
+    "homeassistant": {
+      "base_url": "http://supervisor/core/api"
+    }
+  },
+  "plc": {
+    "port": 102,
+    "host": "192.168.0.1",
+    "rack": 0,
+    "slot": 2,
+    "local_tsap_id": "0x0100",
+    "remote_tsap_id": "0x0300",
+    "debug": false
+  },
+  "mqtt": {
+    "host": "mqtts://host.com:1234",
+    "user": "u",
+    "password": "p",
+    "rejectUnauthorized": true
+  },
+  "entities": [
+    {
+      "name": "Dimmable Light",
+      "type": "light",
+      "state": "DB56,X150.0",
+      "brightness": "DB56,BYTE151"
+    },
+    {
+      "name": "Light",
+      "type": "light",
+      "state": "DB56,X150.0",
+      "device_name": "Dimmer number 1"
+    },
+    {
+      "name": "Climate",
+      "type": "climate",
+      "current_temperature": "DB51,REAL216",
+      "target_temperature": "DB56,REAL6"
+    },
+    {
+      "name": "Cover",
+      "type": "cover",
+      "targetPosition": "DB56,BYTE39",
+      "currentPosition": "DB35,BYTE274",
+      "currentTiltAngle": "DB35,BYTE275",
+      "tiltAngle": "DB56,BYTE40",
+      "trigger": "DB56,X41.0"
+    },
+    {
+      "name": "Binary Cover",
+      "type": "binarycover",
+      "currentPosition": "DB56,X0.3",
+      "targetPosition": "DB56,X0.1"
+    },
+    {
+      "name": "Garage",
+      "type": "binarycover",
+      "currentPosition": "DB56,X0.3"
+    },
+    {
+      "name": "Binary Sensor",
+      "type": "sensor",
+      "state": "DB56,X150.0"
+    },
+    {
+      "name": "Number Sensor",
+      "type": "sensor",
+      "state": "DB56,BYTE39"
+    },
+    {
+      "name": "Floating Point Sensor",
+      "type": "sensor",
+      "state": "DB51,REAL216"
+    },
+    {
+      "name": "Switch",
+      "type": "switch",
+      "state": "DB56,X150.0"
+    },
+    {
+      "name": "Light Readonly Interval",
+      "type": "light",
+      "state": {
+        "plc": "DB56,X150.0",
+        "rw": "r",
+        "update_interval": 5000
+      }
+    },
+    {
+      "name": "Switch Write only",
+      "type": "switch",
+      "state": {
+        "plc": "DB56,X150.0",
+        "rw": "w"
+      }
+    },
+    {
+      "name": "User defined mqtt topic name",
+      "type": "sensor",
+      "mqtt": "outside-sensor",
+      "state": "DB56,X150.0"
+    },
+    {
+      "name": "Sensor with unit of measurement",
+      "type": "sensor",
+      "state": {
+        "plc": "DB56,X150.0"
+      },
+      "unit_of_measurement": "km/h"
+    },
+    {
+      "name": "Switch with different RW address",
+      "type": "switch",
+      "state": {
+        "plc": "DB56,X150.0",
+        "set_plc": "DB56,X150.1"
+      }
+    },
+    {
+      "device_name": "DevTest Sensor 1",
+      "name": "Temperatur",
+      "manufacturer": "Psi-Systems",
+      "type": "sensor",
+      "state": "DB4,INT48",
+      "unit_of_measurement": "\u00b0C",
+      "value_template": "{{ (value | float / 10) | round(2) }}",
+      "device_class": "temperature"
+    },
+    {
+      "device_name": "DevTest Sensor 1",
+      "name": "Humidity",
+      "type": "sensor",
+      "state": "DB4,INT50",
+      "unit_of_measurement": "%",
+      "value_template": "{{ (value | float / 10) | round(2) }}",
+      "device_class": "humidity"
+    },
+    {
+      "device_name": "DevTest Sensor 2",
+      "name": "Temperatur",
+      "manufacturer": "Psi-Systems",
+      "type": "sensor",
+      "state": "DB4,INT48",
+      "unit_of_measurement": "\u00b0C",
+      "value_template": "{{ (value | float / 10) | round(2) }}",
+      "device_class": "temperature"
+    },
+    {
+      "device_name": "DevTest Sensor 2",
+      "name": "Humidity",
+      "type": "sensor",
+      "state": "DB4,INT50",
+      "unit_of_measurement": "%",
+      "value_template": "{{ (value | float / 10) | round(2) }}",
+      "device_class": "humidity"
+    },
+    {
+      "name": "Ventilation Fan",
+      "type": "fan",
+      "state": "DB60,X0.0",
+      "percentage": {
+        "plc": "DB60,BYTE1",
+        "rw": "rw"
+      },
+      "preset_mode": {
+        "plc": "DB60,BYTE2",
+        "rw": "rw"
+      },
+      "preset_modes": [
+        "eco",
+        "boost"
+      ]
+    },
+    {
+      "name": "Entry Lock",
+      "type": "lock",
+      "state": {
+        "plc": "DB61,X0.1",
+        "rw": "rw"
+      }
+    }
+  ]
+}

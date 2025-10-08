@@ -1,4 +1,7 @@
 ---
-name: Martijn's Home Assistant Add-ons
-url: "https://github.com/dixi83/hassio-addons"
+name: MQTT S7 Connector Advanced Add-ons
+slug: mqtt-s7-connector-adv
+url: "https://github.com/dixi83/MQTT-S7-Connector---Home-Assistant-Addon-Adv"
 maintainer: Martijn Diks
+addons:
+  - mqtt-s7-connector
