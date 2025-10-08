@@ -12,6 +12,17 @@ This project integrates [mqtt-s7-connector developed by Tim Roemisch](https://gi
 
 The [DOCS.md](./DOCS.md) file will contain everything you need to know to make the addon work with your Home Assistant installation and your Siemens PLC.
 
+## Weboberfläche für die Add-on-Konfiguration
+
+Dieses Add-on enthält nun eine integrierte Weboberfläche, über die sich alle verfügbaren Parameter der `config.yaml` bequem anpassen lassen. Die Oberfläche ist über Home Assistant per Ingress erreichbar und bietet folgende Funktionen:
+
+- Auswahl des gewünschten Log-Levels.
+- Bearbeiten der Liste der verwendeten Konfigurationsdateien.
+- Visualisierung von Add-on-Metadaten, Konfigurationsstatus sowie Dateidetails (Existenz & letzte Änderung).
+- Validierung der Eingaben sowie sofortiges Speichern direkt in die bestehende `config.yaml` des Add-ons.
+
+Die Oberfläche wird automatisch gestartet, sobald der Container läuft, und ist standardmäßig auf Port `8099` verfügbar (Ingress). Beim ersten Start legt das Add-on zusätzlich die Dateien `config.example.yaml` und `config.example.json` im `/config/`-Verzeichnis an und erstellt daraus bei Bedarf eine initiale `config.yaml`, sodass immer eine bearbeitbare Konfigurationsdatei vorhanden ist.
+
 ## Credits
 
 - [plcpeople / nodeS7](https://github.com/plcpeople/nodeS7)

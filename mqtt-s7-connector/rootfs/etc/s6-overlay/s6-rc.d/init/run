@@ -4,7 +4,149 @@
 # Home Assistant Add-on: MQTT S7 Connector
 # Copies the example config files
 # ==============================================================================
+
 bashio::log.info "Copying example config files..."
 
 cp -n /usr/src/mqtt-s7-connector/config.example.yaml /config/
 cp -n /usr/src/mqtt-s7-connector/config.example.json /config/
+
+if ! bashio::fs.file_exists "/config/config.yaml"; then
+    if bashio::fs.file_exists "/config/config.example.yaml"; then
+        bashio::log.info "Creating initial config.yaml from example"
+        cp /config/config.example.yaml /config/config.yaml
+    else
+        bashio::log.warning "config.example.yaml missing, creating empty config.yaml"
+        cat <<'EOF' > /config/config.yaml
+log_level: warning
+config_files: []
+EOF
+    fi
+fi
+
+if bashio::fs.file_exists "/config/config.yaml"; then
+    removed="$(node <<'NODE'
+const fs = require('fs');
+const path = '/config/config.yaml';
+
+if (!fs.existsSync(path)) {
+  process.exit(0);
+}
+
+const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
+const output = [];
+let inDevices = false;
+let deviceBlock = [];
+let modified = false;
+
+const flushDevice = () => {
+  if (!deviceBlock.length) {
+    return;
+  }
+
+  let deviceType = null;
+  for (const entry of deviceBlock) {
+    const stripped = entry.trim();
+    if (stripped.startsWith('type:')) {
+      deviceType = stripped.split(':', 2)[1].trim();
+      break;
+    }
+  }
+
+  if (deviceType === 'climate') {
+    const cleaned = [];
+    let skipBlock = false;
+    let skipIndent = 0;
+
+    for (const entry of deviceBlock) {
+      const strippedEntry = entry.replace(/^\s+/, '');
+      const indent = entry.length - strippedEntry.length;
+
+      if (skipBlock) {
+        if (indent > skipIndent) {
+          modified = true;
+          continue;
+        }
+        skipBlock = false;
+      }
+
+      if (indent >= 4 && strippedEntry.startsWith('state:')) {
+        modified = true;
+        const value = strippedEntry.split(':', 2)[1].trim();
+        if (!value || value.startsWith('|') || value.startsWith('>')) {
+          skipBlock = true;
+          skipIndent = indent;
+        }
+        continue;
+      }
+
+      cleaned.push(entry);
+    }
+
+    deviceBlock = cleaned;
+  }
+
+  for (const entry of deviceBlock) {
+    output.push(entry);
+  }
+  deviceBlock = [];
+};
+
+for (let idx = 0; idx < lines.length; idx += 1) {
+  const line = lines[idx];
+  const stripped = line.trim();
+  const indent = line.length - stripped.length;
+
+  if (inDevices) {
+    if (indent === 2 && stripped.startsWith('- ')) {
+      flushDevice();
+      deviceBlock.push(line);
+      continue;
+    }
+
+    if (deviceBlock.length && (indent > 2 || stripped === '' || (indent === 2 && !stripped.startsWith('- ')))) {
+      deviceBlock.push(line);
+      continue;
+    }
+
+    if (deviceBlock.length && indent < 2 && stripped !== '') {
+      flushDevice();
+      inDevices = false;
+      idx -= 1;
+      continue;
+    }
+
+    if (!deviceBlock.length && (indent >= 2 || stripped === '')) {
+      deviceBlock.push(line);
+      continue;
+    }
+
+    flushDevice();
+    inDevices = false;
+    idx -= 1;
+    continue;
+  }
+
+  output.push(line);
+  if (stripped === 'devices:') {
+    inDevices = true;
+    deviceBlock = [];
+  }
+}
+
+if (inDevices) {
+  flushDevice();
+}
+
+if (modified) {
+  fs.writeFileSync(path, `${output.join('\n')}\n`);
+  console.log('Removed legacy climate state entries from config.yaml');
+}
+NODE
+)"
+
+    if [[ -n "${removed}" ]]; then
+        bashio::log.warning "${removed}"
+    fi
+fi
+
+bashio::log.info "Example config files copied"
