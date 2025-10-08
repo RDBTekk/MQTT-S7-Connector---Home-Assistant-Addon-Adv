@@ -297,7 +297,7 @@ function applyConfigData(payload) {
 async function fetchConfig() {
   setStatus('Lade Konfiguration…', 'info');
   try {
-    const response = await fetch('/api/config');
+    const response = await fetch('api/config');
     if (!response.ok) {
       throw new Error('Antwort vom Server war nicht erfolgreich.');
     }
@@ -319,7 +319,7 @@ async function saveConfig(event) {
   setStatus('Speichere Änderungen…', 'info');
 
   try {
-    const response = await fetch('/api/config', {
+    const response = await fetch('api/config', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

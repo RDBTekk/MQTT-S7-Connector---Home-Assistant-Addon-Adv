@@ -24,106 +24,124 @@ EOF
 fi
 
 if bashio::fs.file_exists "/config/config.yaml"; then
-    removed="$(python3 <<'PY'
-from pathlib import Path
+    removed="$(node <<'NODE'
+const fs = require('fs');
+const path = '/config/config.yaml';
 
-cfg = Path('/config/config.yaml')
-if not cfg.exists():
-    raise SystemExit
+if (!fs.existsSync(path)) {
+  process.exit(0);
+}
 
-lines = cfg.read_text().splitlines()
-output_lines = []
-device_block = []
-in_devices = False
-modified = False
+const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
+const output = [];
+let inDevices = false;
+let deviceBlock = [];
+let modified = false;
 
+const flushDevice = () => {
+  if (!deviceBlock.length) {
+    return;
+  }
 
-def flush_device():
-    global device_block, output_lines, modified
-    if not device_block:
-        return
+  let deviceType = null;
+  for (const entry of deviceBlock) {
+    const stripped = entry.trim();
+    if (stripped.startsWith('type:')) {
+      deviceType = stripped.split(':', 2)[1].trim();
+      break;
+    }
+  }
 
-    device_type = None
-    for entry in device_block:
-        stripped = entry.strip()
-        if stripped.startswith('type:'):
-            device_type = stripped.split(':', 1)[1].strip()
+  if (deviceType === 'climate') {
+    const cleaned = [];
+    let skipBlock = false;
+    let skipIndent = 0;
 
-    if device_type == 'climate':
-        cleaned = []
-        skip_block = False
-        skip_indent = None
+    for (const entry of deviceBlock) {
+      const strippedEntry = entry.replace(/^\s+/, '');
+      const indent = entry.length - strippedEntry.length;
 
-        for entry in device_block:
-            stripped_entry = entry.lstrip()
-            indent = len(entry) - len(stripped_entry)
+      if (skipBlock) {
+        if (indent > skipIndent) {
+          modified = true;
+          continue;
+        }
+        skipBlock = false;
+      }
 
-            if skip_block:
-                if indent > skip_indent:
-                    modified = True
-                    continue
-                skip_block = False
+      if (indent >= 4 && strippedEntry.startsWith('state:')) {
+        modified = true;
+        const value = strippedEntry.split(':', 2)[1].trim();
+        if (!value || value.startsWith('|') || value.startsWith('>')) {
+          skipBlock = true;
+          skipIndent = indent;
+        }
+        continue;
+      }
 
-            if indent >= 4 and stripped_entry.startswith('state:'):
-                modified = True
-                value = stripped_entry.split(':', 1)[1].strip()
-                if not value or value[0] in ('|', '>'):
-                    skip_block = True
-                    skip_indent = indent
-                continue
+      cleaned.push(entry);
+    }
 
-            cleaned.append(entry)
+    deviceBlock = cleaned;
+  }
 
-        device_block[:] = cleaned
+  for (const entry of deviceBlock) {
+    output.push(entry);
+  }
+  deviceBlock = [];
+};
 
-    output_lines.extend(device_block)
-    device_block.clear()
+for (let idx = 0; idx < lines.length; idx += 1) {
+  const line = lines[idx];
+  const stripped = line.trim();
+  const indent = line.length - stripped.length;
 
+  if (inDevices) {
+    if (indent === 2 && stripped.startsWith('- ')) {
+      flushDevice();
+      deviceBlock.push(line);
+      continue;
+    }
 
-idx = 0
-while idx < len(lines):
-    line = lines[idx]
-    stripped = line.strip()
-    indent = len(line) - len(stripped)
+    if (deviceBlock.length && (indent > 2 || stripped === '' || (indent === 2 && !stripped.startsWith('- ')))) {
+      deviceBlock.push(line);
+      continue;
+    }
 
-    if in_devices:
-        if indent == 2 and stripped.startswith('- '):
-            flush_device()
-            device_block.append(line)
-            idx += 1
-            continue
-        if device_block and (indent > 2 or stripped == '' or (indent == 2 and not stripped.startswith('- '))):
-            device_block.append(line)
-            idx += 1
-            continue
-        if device_block and indent < 2 and stripped != '':
-            flush_device()
-            in_devices = False
-            continue
+    if (deviceBlock.length && indent < 2 && stripped !== '') {
+      flushDevice();
+      inDevices = false;
+      idx -= 1;
+      continue;
+    }
 
-        if not device_block and (indent >= 2 or stripped == ''):
-            device_block.append(line)
-            idx += 1
-            continue
+    if (!deviceBlock.length && (indent >= 2 || stripped === '')) {
+      deviceBlock.push(line);
+      continue;
+    }
 
-        flush_device()
-        in_devices = False
-        continue
+    flushDevice();
+    inDevices = false;
+    idx -= 1;
+    continue;
+  }
 
-    output_lines.append(line)
-    if stripped == 'devices:':
-        in_devices = True
-        device_block.clear()
+  output.push(line);
+  if (stripped === 'devices:') {
+    inDevices = true;
+    deviceBlock = [];
+  }
+}
 
-    idx += 1
+if (inDevices) {
+  flushDevice();
+}
 
-if in_devices:
-    flush_device()
-
-if modified:
-    cfg.write_text('\n'.join(output_lines) + '\n')
-    print('Removed legacy climate state entries from config.yaml')
-PY
+if (modified) {
+  fs.writeFileSync(path, `${output.join('\n')}\n`);
+  console.log('Removed legacy climate state entries from config.yaml');
+}
+NODE
 )"
 
     if [[ -n "${removed}" ]]; then
