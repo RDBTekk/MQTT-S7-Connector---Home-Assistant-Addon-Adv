@@ -1194,7 +1194,12 @@ const server = http.createServer((req, res) => {
       console.warn(`Ingress request URL parsing failed for '${normalizedUrl}': ${parseError.message}`);
       requestUrl = new URL('/', urlBase);
     }
-    const pathname = requestUrl.pathname;
+    let pathname = requestUrl.pathname;
+
+    const rawSegments = pathname.split('/').filter(Boolean);
+    if (rawSegments[0] === 'api' && rawSegments[1] === 'hassio_ingress' && rawSegments.length >= 3) {
+      pathname = `/${rawSegments.slice(3).join('/')}` || '/';
+    }
 
     if (req.method === 'GET' && pathname === '/api/config') {
       handleGetConfig(res);
@@ -1249,7 +1254,8 @@ const server = http.createServer((req, res) => {
         requestedPath = `${requestedPath}index.html`;
       }
 
-      const targetPath = path.normalize(path.join(PUBLIC_DIR, requestedPath));
+      const normalizedPath = requestedPath.replace(/^\/+/, '');
+      const targetPath = path.normalize(path.join(PUBLIC_DIR, normalizedPath));
       const relative = path.relative(PUBLIC_DIR, targetPath);
       if (relative.startsWith('..') || path.isAbsolute(relative)) {
         res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
