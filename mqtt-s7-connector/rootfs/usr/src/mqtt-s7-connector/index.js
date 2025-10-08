@@ -3,6 +3,7 @@
 
 // imports
 const mqtt_handler = require('./mqtt_handler');
+const ha_handler = require('./ha_handler');
 const plc_handler = require('./plc');
 const config_handler = require('./config_handler')
 const sf = require('./service_functions');
@@ -11,7 +12,15 @@ const validateConfig = require('./config_validator');
 
 const config = config_handler.config();
 validateConfig(config);
-const mqtt = mqtt_handler.setup(config.mqtt, mqttMsgParser, initEntities);
+const integrationMode = (config.integration && config.integration.mode) ? config.integration.mode : 'homeassistant';
+let transport = null;
+
+if (integrationMode === 'mqtt') {
+        transport = mqtt_handler.setup(config.mqtt, mqttMsgParser, initEntities);
+} else {
+        transport = ha_handler.setup(config, mqttMsgParser, initEntities);
+}
+
 const plc = plc_handler.setup(config.plc, initEntities);
 
 let entities = {};
@@ -19,9 +28,15 @@ let plcUpdateInterval = null;
 let discoveryInterval = null;
 
 function initEntities() {
-        if (mqtt_handler.isConnected() && plc_handler.isConnected()) {
+        const integrationReady = integrationMode === 'mqtt' ? mqtt_handler.isConnected() : ha_handler.isConnected();
+
+        if (integrationReady && plc_handler.isConnected()) {
                 sf.debug("Initialize application");
                 entities = {};
+
+                if (transport && typeof transport.reset === 'function') {
+                        transport.reset();
+                }
 
                 if (plcUpdateInterval) {
                         clearInterval(plcUpdateInterval);
@@ -76,7 +91,7 @@ function initEntities() {
                         // create for each config entry an object
                         // and save it to the array
                         config.entities.forEach((entityConfig) => {
-                                const newEntity = device_factory(entities, plc, mqtt, entityConfig, config.mqtt_base + "_" + config.mqtt_device_name);
+                                const newEntity = device_factory(entities, plc, transport, entityConfig, config.mqtt_base + "_" + config.mqtt_device_name);
 
                                 // save the new entity before PLC subscriptions are registered
                                 entities[newEntity.mqtt_name] = newEntity;

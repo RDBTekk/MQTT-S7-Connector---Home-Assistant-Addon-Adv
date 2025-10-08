@@ -19,6 +19,14 @@ const normalizeEntities = (configObject) => {
                 delete configObject.devices;
         }
 
+        if (!configObject.integration || typeof configObject.integration !== 'object') {
+                configObject.integration = {};
+        }
+
+        if (!configObject.integration.mode) {
+                configObject.integration.mode = 'homeassistant';
+        }
+
         return configObject;
 };
 

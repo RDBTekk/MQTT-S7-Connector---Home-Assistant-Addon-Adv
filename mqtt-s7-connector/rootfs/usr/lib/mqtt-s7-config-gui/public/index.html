@@ -184,6 +184,41 @@
             </div>
           </article>
 
+          <article class="card" id="integrationCard">
+            <header class="card__header">
+              <h2>Integrationsmodus</h2>
+              <p>Steuere, ob der Connector direkt über die Home Assistant API arbeitet oder MQTT verwendet.</p>
+            </header>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="integrationMode">Modus</label>
+                <select id="integrationMode">
+                  <option value="homeassistant">Home Assistant API (Standard)</option>
+                  <option value="mqtt">MQTT</option>
+                </select>
+              </div>
+              <div class="form-field" data-integration-mode="homeassistant">
+                <label for="integrationHaBaseUrl">API Basis-URL</label>
+                <input
+                  type="text"
+                  id="integrationHaBaseUrl"
+                  placeholder="z. B. http://supervisor/core/api"
+                />
+                <p class="form-hint">Ohne Angabe wird automatisch die Supervisor-API verwendet.</p>
+              </div>
+              <div class="form-field" data-integration-mode="homeassistant">
+                <label for="integrationHaToken">Langzeit-Token</label>
+                <input
+                  type="password"
+                  id="integrationHaToken"
+                  placeholder="Nur außerhalb des Add-ons erforderlich"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+            <p class="form-status" id="integrationModeStatus" role="status" aria-live="polite"></p>
+          </article>
+
           <article class="card">
             <header class="card__header">
               <h2>PLC-Verbindung</h2>
@@ -283,7 +318,7 @@
             </div>
           </article>
 
-          <article class="card">
+          <article class="card" id="mqttCard">
             <header class="card__header">
               <h2>MQTT-Anbindung</h2>
               <p>Zugangsdaten zum MQTT Broker.</p>

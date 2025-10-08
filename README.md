@@ -26,11 +26,13 @@ umfangreiche Weboberfläche für die gesamte Einrichtung und bringt einen integr
 
 Der Connector basiert auf dem Open-Source-Projekt [mqtt-s7-connector von Tim Roemisch](https://github.com/timroemisch/mqtt-s7-
 connector) und wurde für Home Assistant angepasst. Sämtliche Einstellungen der ursprünglichen `config.yaml` lassen sich direkt
-in der integrierten GUI ändern – die manuelle Bearbeitung von Dateien ist nicht mehr erforderlich. Über MQTT werden die
-konfigurierten Entitäten im Discovery-Format automatisch in Home Assistant eingebunden.
+in der integrierten GUI ändern – die manuelle Bearbeitung von Dateien ist nicht mehr erforderlich. Standardmäßig registriert das
+Add-on Geräte und Entitäten über die Home-Assistant-API und aktualisiert deren Zustände direkt; auf Wunsch kann weiterhin ein
+MQTT-Modus aktiviert werden, der Discovery-Topics an einen Broker sendet.
 
 ## Funktionsumfang
 
+- **Direkte Home-Assistant-Anbindung**: Entitäten werden ohne MQTT-Broker über die Core-API angelegt und aktualisiert; der MQTT-Modus lässt sich optional zuschalten.
 - **Geführte Ersteinrichtung**: Dropdown-gestützte Auswahl für MQTT-Basis, Discovery-Prefix sowie PLC-Port, Rack, Slot und TSAP.
 - **Geführter Entitätsassistent**: Vorlagen für Lampen, Ventile, Garagentore, Sensoren u. v. m. mit automatischen MQTT-Topic- und
   SPS-Adressvorschlägen.
@@ -44,7 +46,7 @@ konfigurierten Entitäten im Discovery-Format automatisch in Home Assistant eing
 
 - Home Assistant OS oder Supervised mit Zugriff auf den Add-on-Store.
 - Eine Siemens-SPS (LOGO!, S7‑1200/1500, S7‑300/400, ET200, SINUMERIK) **oder** Nutzung des integrierten Testmodus.
-- Ein erreichbarer MQTT-Broker (z. B. der Home Assistant MQTT-Server).
+- Optional: Ein erreichbarer MQTT-Broker (z. B. der Home Assistant MQTT-Server), falls der MQTT-Modus genutzt werden soll.
 - Netzwerkzugriff von Home Assistant auf die SPS.
 
 ## Installation
@@ -69,7 +71,15 @@ konfigurierten Entitäten im Discovery-Format automatisch in Home Assistant eing
 - Log-Level, Update-Intervall, Discovery-Optionen sowie MQTT-Basis- und Gerätenamen lassen sich über Presets oder eigene Werte
   definieren.
 
-### 2. PLC-Verbindung
+### 2. Integrationsmodus
+
+- Die Karte **„Integrationsmodus“** entscheidet, ob Zustände über die Home-Assistant-API oder über MQTT verteilt werden.
+- **Home Assistant API (Standard)**: kein externer Broker erforderlich; das Add-on meldet Geräte/Entitäten direkt an und
+  verarbeitet Befehle über den Websocket der Core-Instanz.
+- **MQTT**: Discovery-Topics und Statusupdates werden an den hinterlegten Broker geschickt. Diese Option ist sinnvoll, wenn bereits ein bestehendes MQTT-Setup genutzt wird oder externe Systeme auf die Topics zugreifen sollen.
+- Bei Bedarf kann eine individuelle API-Basis-URL bzw. ein Long-Lived-Token hinterlegt werden (z. B. für Testinstallationen außerhalb des Supervisors).
+
+### 3. PLC-Verbindung
 
 - Host/IP eintragen oder aus dem Scan auswählen.
 - Dropdown-Presets erleichtern die Wahl von **Port**, **Rack**, **Slot** und **TSAP-IDs**:
@@ -79,21 +89,22 @@ konfigurierten Entitäten im Discovery-Format automatisch in Home Assistant eing
   - TSAP-Paare für LOGO!, S7-1200/1500, S7-300/400 und geschützte Verbindungen.
 - Eigene Werte lassen sich jederzeit über das eingeblendete Eingabefeld definieren.
 
-### 3. MQTT-Einstellungen
+### 4. MQTT-Einstellungen
 
+- Diese Karte wird nur benötigt, wenn der MQTT-Modus aktiv ist.
 - Broker-Host, Benutzer und Passwort eintragen.
 - Vorausgefüllte Presets für MQTT-Basis (`s7`, `homeassistant`, `automation`, `factory`, …) und Gerätekennungen (`plc`, `logo`,
   `station`, `testbench`, …) beschleunigen die Einrichtung.
 - TLS-Optionen und Retain-Verhalten sind ebenfalls über Schalter verfügbar.
 
-### 4. Entitäten mit dem Assistenten anlegen
+### 5. Entitäten mit dem Assistenten anlegen
 
 1. **Entitätsrichtung wählen** (Eingang/Ausgang).
 2. Entsprechende Blaupause auswählen (Lampe, Ventil, Garagentor, Sensor, Thermostat, Lüfter, Schloss, Taster, etc.).
 3. Der Assistent schlägt daraufhin MQTT-Themen sowie passende SPS-Adressen vor und zeigt gefundene PLC-Adressen im Dropdown an.
 4. Zusätzliche Optionen (Device-Class, Helligkeit, Temperaturgrenzen, …) werden automatisch gesetzt, können aber angepasst werden.
 
-### 5. Dateien speichern
+### 6. Dateien speichern
 
 - Änderungen werden in der angezeigten Datei im `/config`-Verzeichnis gespeichert.
 - Die GUI bestätigt den erfolgreichen Schreibvorgang und zeigt Zeitstempel sowie Dateigröße an.

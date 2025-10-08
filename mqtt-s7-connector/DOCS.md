@@ -31,13 +31,13 @@ This documentation file is edited so it will contain everything you need to know
 
 ## Purpose
 
-This tool can receive data over mqtt and can write it to a designated address on a plc and vice versa, enabling smart home data to be displayed in the Home Assistant.
+This tool exposes Siemens PLC values as Home Assistant entities. By default it talks directly to the Home Assistant Core API, keeps device states in sync, and accepts commands without requiring an external broker. If desired, the connector can still publish MQTT discovery topics and state updates so that existing MQTT workflows continue to work.
 
 ## Requirements:
 
 - Home Assistant installation (HAOS or Supervised, other installation methods do not support addons)
-- a [MQTT broker](https://github.com/home-assistant/addons/tree/master/mosquitto)
-- the Home Assistant [MQTT integration](https://www.home-assistant.io/integrations/mqtt/)
+- Optional: a [MQTT broker](https://github.com/home-assistant/addons/tree/master/mosquitto) if you want to run the connector in MQTT mode
+- Optional: the Home Assistant [MQTT integration](https://www.home-assistant.io/integrations/mqtt/) to automatically import the discovery topics published in MQTT mode
 - Siemens PLC (S7-300,400,1200 or 1500) with an ethernet connection. I will add support for LOGO
 - Access to the PLC program/software
 
@@ -61,6 +61,19 @@ Or add the repo by clicking:
 There are several log levels if there are problems changing the level to debug could help identify the problem. If you have issues and want support, please share switch to debug and share the log information.
 
 `warning` is the recommended log level.
+
+### Integration mode
+
+The add-on can expose PLC data either directly through the Home Assistant Core API or via MQTT discovery topics.
+
+- `homeassistant` (default): the connector keeps a websocket connection to Home Assistant, registers devices/entities automatically and pushes state changes without needing a broker. This mode is recommended for new installations.
+- `mqtt`: enables the legacy MQTT workflow. Discovery topics and state updates are published to the configured broker and the Home Assistant MQTT integration needs to be enabled.
+
+When `homeassistant` mode is active the MQTT credentials in the web UI are disabled. You can still provide a custom API base URL or a long-lived token if the add-on runs outside of the Supervisor environment.
+
+To generate a long-lived token open **Benutzerprofil → Sicherheit → Token erstellen** in Home Assistant, copy the token once, and paste it into the GUI field. Tokens behave like passwords—keep them secret and rotate them if they leak. When the add-on runs inside the Supervisor environment the `SUPERVISOR_TOKEN` is injected automatically and no manual token is required.
+
+If you need to override the API base URL (for example when testing against a remote development instance), enter the full root including protocol and port, e.g. `https://ha.example.net:8123/api`. The connector will derive the websocket endpoint automatically.
 
 ### Config files
 
@@ -150,6 +163,22 @@ plc:
 `local_tsap_id` and `remote_tsap_id` allow the add-on to talk to Siemens LOGO! or S7 controllers that expect explicit TSAP identifiers. The values can be expressed either as decimal integers or hexadecimal strings (for example `0x0100`). When the fields are omitted the connector behaves exactly like previous releases.
 
 If you enable `test_mode`, the connector starts the integrated simulator instead of connecting to a physical PLC. In this case the host, port, rack and slot values are ignored, letting you run the add-on without any hardware.
+
+#### `integration` Object
+
+_selects how the connector exposes PLC data to Home Assistant_
+
+```yaml
+integration:
+  mode: homeassistant
+  homeassistant:
+    base_url: http://supervisor/core/api
+    # access_token: <long lived token when running outside the Supervisor>
+```
+
+- `mode` can be `homeassistant` (default) or `mqtt`.
+- The optional `homeassistant.base_url` overrides the API endpoint; by default the Supervisor proxy is used.
+- `homeassistant.access_token` allows you to supply a long-lived access token when the Supervisor token is not available (e.g. during local development).
 
 #### `mqtt` Object
 

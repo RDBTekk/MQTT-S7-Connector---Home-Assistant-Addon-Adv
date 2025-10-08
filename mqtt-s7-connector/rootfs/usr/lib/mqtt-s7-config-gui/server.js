@@ -341,6 +341,12 @@ function loadEntityConfig() {
     throw new Error(`Konfigurationsdatei enthält ungültiges YAML: ${error.message}`);
   }
 
+  if (!data.integration || typeof data.integration !== 'object') {
+    data.integration = { mode: 'homeassistant' };
+  } else if (!data.integration.mode) {
+    data.integration.mode = 'homeassistant';
+  }
+
   let modifiedAt = null;
   try {
     const stat = fs.statSync(absolutePath);
@@ -368,6 +374,7 @@ const ORDERED_ENTITY_KEYS = [
   'retain_messages',
   'discovery_prefix',
   'discovery_retain',
+  'integration',
   'plc',
   'mqtt',
   'entities',

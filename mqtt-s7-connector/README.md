@@ -20,6 +20,7 @@ Dieses Add-on enthält nun eine integrierte Weboberfläche, über die sich alle 
 - Bearbeiten der Liste der verwendeten Konfigurationsdateien.
 - Visualisierung von Add-on-Metadaten, Konfigurationsstatus sowie Dateidetails (Existenz & letzte Änderung).
 - Bearbeiten der Inhalte der referenzierten YAML- oder JSON-Konfigurationsdateien in einem integrierten Editor inkl. Beispielvorlagen.
+- Umschalten zwischen direkter Home-Assistant-API-Anbindung (Standard) und optionalem MQTT-Modus inklusive Statusanzeige.
 - Validierung der Eingaben sowie sofortiges Speichern direkt in die bestehende `config.yaml` des Add-ons und der ausgewählten Konfigurationsdateien.
 - Aktivierbarer Testmodus, der eine virtuelle S7-1200 samt digitalen/analogen Ein- und Ausgängen simuliert.
 - Live-Scan der angebundenen SPS, inklusive tabellarischer Auflistung der gefundenen Ein- und Ausgänge samt Quelle und Status.

@@ -1,6 +1,12 @@
 **Please note:**
 Configuration files now use the `entities` array instead of `devices`. Existing setups are migrated automatically during container startup.
 
+## 1.0.11
+
+- feat: introduce a Home Assistant API integration layer that registers devices and entities without MQTT
+- feat: make MQTT optional and default to the API mode while still supporting broker-based setups via a dedicated switch
+- feat: extend the configuration GUI with an integrations card, status messages, and dropdown controls for API and MQTT modes
+
 ## 1.0.10
 
 - feat: add an optional PLC test mode that simulates a Siemens S7-1200 including digital and analog signals

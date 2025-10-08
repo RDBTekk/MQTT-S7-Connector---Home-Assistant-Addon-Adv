@@ -4,9 +4,9 @@ const appConfigHandler = require('./config_handler');
 const appConfig = appConfigHandler.config();
 
 module.exports = class device {
-	constructor(plc, mqtt, config) {
-		this.plc_handler = plc;
-		this.mqtt_handler = mqtt;
+        constructor(plc, mqtt, config) {
+                this.plc_handler = plc;
+                this.transport = mqtt;
 
 		this.name = config["mqtt_base"] + "_" + config["name"] || config["mqtt_base"] + "_" + "unnamed device";
 		this.config = config;
@@ -14,7 +14,9 @@ module.exports = class device {
 		this.discovery_topic = "homeassistant";
 		this.discovery_retain = appConfig.discovery_retain || false;
 		this.type = config["type"].toLowerCase();
-		this.ha_component = this.type; // default is the type but can be overwritten
+                this.ha_component = this.type; // default is the type but can be overwritten
+
+                this.integrationMode = (appConfig.integration && appConfig.integration.mode) ? appConfig.integration.mode : 'homeassistant';
 
 		// device topics
 		this.mqtt_name = config["mqtt"];
@@ -26,9 +28,9 @@ module.exports = class device {
 
 	create_attribute(config, required_type, name) {
 		// create attribute object
-		let new_attribute = new attribute(
-			this.plc_handler,
-			this.mqtt_handler,
+                let new_attribute = new attribute(
+                        this.plc_handler,
+                        this.transport,
 			name,
 			required_type,
 			this.full_mqtt_topic);
@@ -167,33 +169,40 @@ module.exports = class device {
                 });
         }
 
-	send_discover_msg(info) {
-		// create a topic in which the discovery message can be sent
-		let topic = this.discovery_topic + "/" +
-			this.ha_component + "/" +
-			this.config["mqtt_base"] + "/" +
-			this.mqtt_name + "/config";
+        send_discover_msg(info) {
+                if (this.integrationMode !== 'mqtt' && this.transport && typeof this.transport.registerEntity === 'function') {
+                        this.transport.registerEntity(this);
+                        return;
+                }
 
-		info.unique_id = this.config["mqtt_base"] + "_" + this.mqtt_name;
+                // create a topic in which the discovery message can be sent
+                let topic = this.discovery_topic + "/" +
+                        this.ha_component + "/" +
+                        this.config["mqtt_base"] + "/" +
+                        this.mqtt_name + "/config";
 
-		info.origin = this.config["origin"];
+                info.unique_id = this.config["mqtt_base"] + "_" + this.mqtt_name;
 
-		if (this.config["device_name"] !== undefined) {
-			info.device = {
-				name: this.config["device_name"],
-				identifiers: [
-					this.config["device_identifier"]
-				]
-			};
-			if(this.config["manufacturer"]) {
-				info.device.manufacturer = this.config["manufacturer"];
-			}
-		}
+                info.origin = this.config["origin"];
 
-		this.mqtt_handler.publish(topic, JSON.stringify(info), {
-			retain: this.discovery_retain
-		});
-	}
+                if (this.config["device_name"] !== undefined) {
+                        info.device = {
+                                name: this.config["device_name"],
+                                identifiers: [
+                                        this.config["device_identifier"]
+                                ]
+                        };
+                        if(this.config["manufacturer"]) {
+                                info.device.manufacturer = this.config["manufacturer"];
+                        }
+                }
+
+                if (this.transport && typeof this.transport.publish === 'function') {
+                        this.transport.publish(topic, JSON.stringify(info), {
+                                retain: this.discovery_retain
+                        });
+                }
+        }
 
 	rec_s7_data(attr, data) {
 		// check if the attribute with this name exists

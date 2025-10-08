@@ -228,6 +228,14 @@ body::before {
   display: block;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
+.card--disabled {
+  opacity: 0.55;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -692,6 +700,10 @@ input[type="number"] {
 
 .form-status[data-type="info"] {
   color: var(--info);
+}
+
+.form-status[data-type="warning"] {
+  color: var(--warning);
 }
 
 .file-editor {
