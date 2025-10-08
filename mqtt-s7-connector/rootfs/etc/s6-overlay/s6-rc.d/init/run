@@ -4,7 +4,131 @@
 # Home Assistant Add-on: MQTT S7 Connector
 # Copies the example config files
 # ==============================================================================
+
 bashio::log.info "Copying example config files..."
 
 cp -n /usr/src/mqtt-s7-connector/config.example.yaml /config/
 cp -n /usr/src/mqtt-s7-connector/config.example.json /config/
+
+if ! bashio::fs.file_exists "/config/config.yaml"; then
+    if bashio::fs.file_exists "/config/config.example.yaml"; then
+        bashio::log.info "Creating initial config.yaml from example"
+        cp /config/config.example.yaml /config/config.yaml
+    else
+        bashio::log.warning "config.example.yaml missing, creating empty config.yaml"
+        cat <<'EOF' > /config/config.yaml
+log_level: warning
+config_files: []
+EOF
+    fi
+fi
+
+if bashio::fs.file_exists "/config/config.yaml"; then
+    removed="$(python3 <<'PY'
+from pathlib import Path
+
+cfg = Path('/config/config.yaml')
+if not cfg.exists():
+    raise SystemExit
+
+lines = cfg.read_text().splitlines()
+output_lines = []
+device_block = []
+in_devices = False
+modified = False
+
+
+def flush_device():
+    global device_block, output_lines, modified
+    if not device_block:
+        return
+
+    device_type = None
+    for entry in device_block:
+        stripped = entry.strip()
+        if stripped.startswith('type:'):
+            device_type = stripped.split(':', 1)[1].strip()
+
+    if device_type == 'climate':
+        cleaned = []
+        skip_block = False
+        skip_indent = None
+
+        for entry in device_block:
+            stripped_entry = entry.lstrip()
+            indent = len(entry) - len(stripped_entry)
+
+            if skip_block:
+                if indent > skip_indent:
+                    modified = True
+                    continue
+                skip_block = False
+
+            if indent >= 4 and stripped_entry.startswith('state:'):
+                modified = True
+                value = stripped_entry.split(':', 1)[1].strip()
+                if not value or value[0] in ('|', '>'):
+                    skip_block = True
+                    skip_indent = indent
+                continue
+
+            cleaned.append(entry)
+
+        device_block[:] = cleaned
+
+    output_lines.extend(device_block)
+    device_block.clear()
+
+
+idx = 0
+while idx < len(lines):
+    line = lines[idx]
+    stripped = line.strip()
+    indent = len(line) - len(stripped)
+
+    if in_devices:
+        if indent == 2 and stripped.startswith('- '):
+            flush_device()
+            device_block.append(line)
+            idx += 1
+            continue
+        if device_block and (indent > 2 or stripped == '' or (indent == 2 and not stripped.startswith('- '))):
+            device_block.append(line)
+            idx += 1
+            continue
+        if device_block and indent < 2 and stripped != '':
+            flush_device()
+            in_devices = False
+            continue
+
+        if not device_block and (indent >= 2 or stripped == ''):
+            device_block.append(line)
+            idx += 1
+            continue
+
+        flush_device()
+        in_devices = False
+        continue
+
+    output_lines.append(line)
+    if stripped == 'devices:':
+        in_devices = True
+        device_block.clear()
+
+    idx += 1
+
+if in_devices:
+    flush_device()
+
+if modified:
+    cfg.write_text('\n'.join(output_lines) + '\n')
+    print('Removed legacy climate state entries from config.yaml')
+PY
+)"
+
+    if [[ -n "${removed}" ]]; then
+        bashio::log.warning "${removed}"
+    fi
+fi
+
+bashio::log.info "Example config files copied"
