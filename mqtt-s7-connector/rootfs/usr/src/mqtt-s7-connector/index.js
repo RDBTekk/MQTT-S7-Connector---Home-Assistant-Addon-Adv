@@ -120,11 +120,15 @@ function initEntities() {
                 }, 300000); // 5 min
 
         } else {
-                setTimeout(() => {
-                        if (!mqtt_handler.isConnected() || !plc_handler.isConnected()) {
-                                sf.error("Connection Timeout");
-                        }
-                }, 5000)
+        setTimeout(() => {
+                const transportReady = integrationMode === 'mqtt'
+                        ? mqtt_handler.isConnected()
+                        : ha_handler.isConnected();
+
+                if (!transportReady || !plc_handler.isConnected()) {
+                        sf.error("Connection Timeout");
+                }
+        }, 5000)
         }
 }
 
