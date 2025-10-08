@@ -1,0 +1,16 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Add-on: MQTT S7 Connector
+# Startet die Konfigurations-GUI
+# ==============================================================================
+
+CONFIG_GUI_SLUG="${BASHIO_ADDON_SLUG:-mqtt-s7-connector}"
+CONFIG_GUI_FILE="/addon_configs/${CONFIG_GUI_SLUG}/config.yaml"
+
+export CONFIG_GUI_FILE
+export CONFIG_GUI_TEMPLATE="/usr/lib/mqtt-s7-config-gui/config.template.yaml"
+
+bashio::log.info "Starte Konfigurations-GUI für ${CONFIG_GUI_SLUG} auf Port ${CONFIG_GUI_PORT:-8099}"
+
+exec node /usr/lib/mqtt-s7-config-gui/server.js
