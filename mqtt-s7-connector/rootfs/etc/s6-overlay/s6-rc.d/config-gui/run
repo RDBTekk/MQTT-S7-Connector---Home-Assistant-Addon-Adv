@@ -6,8 +6,8 @@
 # ==============================================================================
 
 CONFIG_GUI_SLUG="${BASHIO_ADDON_SLUG:-mqtt-s7-connector}"
+CONFIG_GUI_FILE="/addon_configs/${CONFIG_GUI_SLUG}/config.yaml"
 CONFIG_GUI_STORAGE_ROOT="${CONFIG_GUI_STORAGE_ROOT:-/config}"
-CONFIG_GUI_FILE="${CONFIG_GUI_FILE:-${CONFIG_GUI_STORAGE_ROOT}/config.yaml}"
 
 export CONFIG_GUI_FILE
 export CONFIG_GUI_TEMPLATE="/usr/lib/mqtt-s7-config-gui/config.template.yaml"

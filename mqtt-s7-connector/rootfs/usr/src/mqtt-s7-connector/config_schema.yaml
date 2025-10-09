@@ -27,24 +27,6 @@ properties:
     type: boolean
     default: false
 
-  integration:
-    type: object
-    properties:
-      mode:
-        type: string
-        enum:
-          - homeassistant
-          - mqtt
-        default: homeassistant
-      homeassistant:
-        type: object
-        properties:
-          base_url:
-            type: string
-          access_token:
-            type: string
-    default: {}
-
   plc:
     type: object
     properties:
@@ -103,6 +85,11 @@ properties:
         type: string
       rejectUnauthorized:
         type: boolean
+    required:
+      - host
+      - user
+      - password
+      - rejectUnauthorized
 
   entities:
     type: array
@@ -454,15 +441,5 @@ properties:
 
 required:
   - plc
+  - mqtt
   - entities
-
-allOf:
-  - if:
-      properties:
-        integration:
-          properties:
-            mode:
-              const: mqtt
-    then:
-      required:
-        - mqtt

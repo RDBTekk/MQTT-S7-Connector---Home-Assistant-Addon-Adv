@@ -1,9 +1,9 @@
 let sf = require("./service_functions.js");
 
 module.exports = class attribute {
-        constructor(plc, mqtt, name, type, mqtt_device_topic) {
-                this.plc_handler = plc;
-                this.transport = mqtt;
+	constructor(plc, mqtt, name, type, mqtt_device_topic) {
+		this.plc_handler = plc;
+		this.mqtt_handler = mqtt;
 
 		this.last_update = 0;
 		this.last_value = null;
@@ -39,8 +39,8 @@ module.exports = class attribute {
 		this.write_back = false;
 
                 // only subscribe if attribute is allowed to write to plc
-                if (this.write_to_s7 && this.transport && typeof this.transport.subscribe === 'function') {
-                        this.transport.subscribe(this.full_mqtt_topic + "/set");
+                if (this.write_to_s7) {
+                        this.mqtt_handler.subscribe(this.full_mqtt_topic + "/set");
                         sf.debug("-- Subscribe to topic: '" + this.full_mqtt_topic + "/set'");
                 }
 	}
@@ -66,10 +66,8 @@ module.exports = class attribute {
 
 				// unsubscribe if already subscribed
 				sf.debug("-- Unsubscribe from topic: '" + this.full_mqtt_topic + "/set'");
-                                if (this.transport && typeof this.transport.unsubscribe === 'function') {
-                                        this.transport.unsubscribe(this.full_mqtt_topic + "/set");
-                                }
-                                break;
+				this.mqtt_handler.unsubscribe(this.full_mqtt_topic + "/set");
+				break;
 
 			case "w":
 				this.write_to_s7 = true;
@@ -122,11 +120,9 @@ module.exports = class attribute {
 				this.last_value = data;
 				this.last_update = now;
 
-                                if (this.transport && typeof this.transport.publish === 'function') {
-                                        this.transport.publish(this.full_mqtt_topic, data.toString(), {
-                                                retain: false
-                                        });
-                                }
+				this.mqtt_handler.publish(this.full_mqtt_topic, data.toString(), {
+					retain: false
+				});
 
 				if (this.write_back) {
 					if (data === this.last_set_data) {

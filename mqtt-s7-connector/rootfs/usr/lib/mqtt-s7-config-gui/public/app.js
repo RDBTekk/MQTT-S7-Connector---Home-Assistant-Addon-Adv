@@ -44,12 +44,6 @@ const elements = {
   generalDiscoveryPrefixCustom: document.getElementById('generalDiscoveryPrefixCustom'),
   generalRetainMessages: document.getElementById('generalRetainMessages'),
   generalDiscoveryRetain: document.getElementById('generalDiscoveryRetain'),
-  integrationCard: document.getElementById('integrationCard'),
-  integrationMode: document.getElementById('integrationMode'),
-  integrationHaBaseUrl: document.getElementById('integrationHaBaseUrl'),
-  integrationHaToken: document.getElementById('integrationHaToken'),
-  integrationModeStatus: document.getElementById('integrationModeStatus'),
-  integrationHaFields: document.querySelectorAll('[data-integration-mode="homeassistant"]'),
   plcHost: document.getElementById('plcHost'),
   plcPort: document.getElementById('plcPort'),
   plcPortCustom: document.getElementById('plcPortCustom'),
@@ -68,7 +62,6 @@ const elements = {
   mqttUser: document.getElementById('mqttUser'),
   mqttPassword: document.getElementById('mqttPassword'),
   mqttRejectUnauthorized: document.getElementById('mqttRejectUnauthorized'),
-  mqttCard: document.getElementById('mqttCard'),
   scanTriggerButton: document.getElementById('scanTrigger'),
   scanRefreshButton: document.getElementById('scanRefresh'),
   scanStatus: document.getElementById('scanStatus'),
@@ -107,8 +100,6 @@ let addressOptions = { groups: [], flat: [] };
 let generalBindingsInitialized = false;
 let plcBindingsInitialized = false;
 let mqttBindingsInitialized = false;
-let integrationBindingsInitialized = false;
-let currentIntegrationMode = 'homeassistant';
 const entityFieldRefs = new Map();
 let generalPresetControllers = {};
 let plcPresetControllers = {};
@@ -1493,107 +1484,10 @@ function createObjectSection(index, key, value, parentPath, titleEl, subtitleEl)
   return section;
 }
 
-function getIntegrationModeValue() {
-  const mode = getRootValue(['integration', 'mode'], 'homeassistant');
-  return typeof mode === 'string' && mode.length > 0 ? mode : 'homeassistant';
-}
-
-function updateIntegrationUiState(mode) {
-  currentIntegrationMode = mode || 'homeassistant';
-  const haMode = currentIntegrationMode !== 'mqtt';
-
-  if (elements.integrationHaFields && elements.integrationHaFields.forEach) {
-    elements.integrationHaFields.forEach((field) => {
-      if (field && field.classList) {
-        field.classList.toggle('is-hidden', !haMode);
-      }
-    });
-  }
-
-  if (elements.mqttCard) {
-    elements.mqttCard.classList.toggle('card--disabled', haMode);
-    elements.mqttCard.setAttribute('aria-disabled', haMode ? 'true' : 'false');
-    const inputs = elements.mqttCard.querySelectorAll('input, select, textarea, button');
-    inputs.forEach((input) => {
-      if (!input) {
-        return;
-      }
-      input.disabled = haMode;
-    });
-  }
-
-  if (elements.integrationModeStatus) {
-    elements.integrationModeStatus.dataset.type = haMode ? 'info' : 'warning';
-    elements.integrationModeStatus.textContent = haMode
-      ? 'MQTT ist deaktiviert. Zustände und Befehle laufen direkt über die Home Assistant API.'
-      : 'MQTT-Modus aktiv: Discovery-Topics und Statusmeldungen werden an den Broker gesendet.';
-  }
-}
-
-function populateIntegrationSettings() {
-  const mode = getIntegrationModeValue();
-  if (elements.integrationMode) {
-    elements.integrationMode.value = mode;
-  }
-
-  if (elements.integrationHaBaseUrl) {
-    const baseUrl = getRootValue(['integration', 'homeassistant', 'base_url'], '') || '';
-    elements.integrationHaBaseUrl.value = baseUrl;
-  }
-
-  if (elements.integrationHaToken) {
-    const token = getRootValue(['integration', 'homeassistant', 'access_token'], '') || '';
-    elements.integrationHaToken.value = token;
-  }
-
-  updateIntegrationUiState(mode);
-}
-
-function bindIntegrationSettings() {
-  if (integrationBindingsInitialized) {
-    return;
-  }
-
-  if (elements.integrationMode) {
-    elements.integrationMode.addEventListener('change', (event) => {
-      const value = event.target.value || 'homeassistant';
-      setRootValue(['integration', 'mode'], value);
-      updateIntegrationUiState(value);
-      populateMqttSettings();
-    });
-  }
-
-  if (elements.integrationHaBaseUrl) {
-    elements.integrationHaBaseUrl.addEventListener('input', (event) => {
-      const value = event.target.value.trim();
-      if (value) {
-        setRootValue(['integration', 'homeassistant', 'base_url'], value);
-      } else {
-        deleteRootValue(['integration', 'homeassistant', 'base_url']);
-      }
-    });
-  }
-
-  if (elements.integrationHaToken) {
-    elements.integrationHaToken.addEventListener('input', (event) => {
-      const value = event.target.value.trim();
-      if (value) {
-        setRootValue(['integration', 'homeassistant', 'access_token'], value);
-      } else {
-        deleteRootValue(['integration', 'homeassistant', 'access_token']);
-      }
-    });
-  }
-
-  integrationBindingsInitialized = true;
-}
-
 function populateGeneralSettings() {
   if (!elements.generalUpdateTime) {
     return;
   }
-
-  populateIntegrationSettings();
 
   const updateTime = getRootValue(['update_time'], '');
   elements.generalUpdateTime.value = updateTime !== undefined && updateTime !== null ? updateTime : '';
@@ -1688,28 +1582,10 @@ function populateMqttSettings() {
     return;
   }
 
-  const mode = getIntegrationModeValue();
-  const disabled = mode !== 'mqtt';
-
   elements.mqttHost.value = getRootValue(['mqtt', 'host'], '') || '';
-  elements.mqttHost.disabled = disabled;
-
-  if (elements.mqttUser) {
-    elements.mqttUser.value = getRootValue(['mqtt', 'user'], '') || '';
-    elements.mqttUser.disabled = disabled;
-  }
-
-  if (elements.mqttPassword) {
-    elements.mqttPassword.value = getRootValue(['mqtt', 'password'], '') || '';
-    elements.mqttPassword.disabled = disabled;
-  }
-
-  if (elements.mqttRejectUnauthorized) {
-    elements.mqttRejectUnauthorized.checked = Boolean(getRootValue(['mqtt', 'rejectUnauthorized'], false));
-    elements.mqttRejectUnauthorized.disabled = disabled;
-  }
-
-  updateIntegrationUiState(mode);
+  elements.mqttUser.value = getRootValue(['mqtt', 'user'], '') || '';
+  elements.mqttPassword.value = getRootValue(['mqtt', 'password'], '') || '';
+  elements.mqttRejectUnauthorized.checked = Boolean(getRootValue(['mqtt', 'rejectUnauthorized'], false));
 }
 
 function renderEntities() {
@@ -3024,7 +2900,6 @@ async function fetchEntityConfig() {
     entityConfigMeta = { path: payload.path, modified_at: payload.modified_at };
     clearEntityConfigDirty();
 
-    bindIntegrationSettings();
     bindGeneralSettings();
     bindPlcSettings();
     bindMqttSettings();

@@ -6,12 +6,6 @@
   "retain_messages": true,
   "discovery_prefix": "homeassistant",
   "discovery_retain": false,
-  "integration": {
-    "mode": "homeassistant",
-    "homeassistant": {
-      "base_url": "http://supervisor/core/api"
-    }
-  },
   "plc": {
     "port": 102,
     "host": "192.168.0.1",
